@@ -6,6 +6,7 @@ import userRouter from "./routes/user.routes.js";
 import attendanceRouter from "./routes/attendance.routes.js";
 import reportRouter from "./routes/reports.routes.js";
 import leaveRouter from "./routes/leave.routes.js";
+import connectDB from "./database/mongodb.js";
 
 const app = express();
 
@@ -25,4 +26,5 @@ app.listen(PORT, async () => {
   console.log(
     `Attendance Management System API running on http://localhost:${PORT}`,
   );
+  await connectDB();
 });
