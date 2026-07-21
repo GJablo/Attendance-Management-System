@@ -12,11 +12,27 @@ const studentSchema = new mongoose.Schema(
       type: String,
       required: [true, "Class is required"],
       trim: true,
+      enum: [
+        "Year 1",
+        "Year 2",
+        "Year 3",
+        "Year 4",
+        "Year 5",
+        "Masters",
+        "PhD",
+      ],
     },
     department: {
       type: String,
       required: [true, "Department is required"],
       trim: true,
+      enum: [
+        "Computer Science",
+        "Software Engineering",
+        "Information Technology",
+        "Cyber Security",
+        "Data Science",
+      ],
     },
     guardian: {
       type: String,
