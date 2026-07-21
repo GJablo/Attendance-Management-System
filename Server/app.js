@@ -7,6 +7,7 @@ import attendanceRouter from "./routes/attendance.routes.js";
 import reportRouter from "./routes/reports.routes.js";
 import leaveRouter from "./routes/leave.routes.js";
 import connectDB from "./database/mongodb.js";
+import errorMiddleware from "./middlewares/error.middleware.js";
 
 const app = express();
 
@@ -17,6 +18,8 @@ app.use("/api/v1/users", userRouter);
 app.use("/api/v1/attendance", attendanceRouter);
 app.use("/api/v1/reports", reportRouter);
 app.use("/api/v1/leaves", leaveRouter);
+
+app.use(errorMiddleware);
 
 app.get("/", (req, res) => {
   res.send("Welcome to Attendance Management System API!");
