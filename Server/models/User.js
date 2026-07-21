@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: true,
+      required: [true, "Phone Number is required"],
       trim: true,
       match: [
         /^(07\d{8}|01\d{8}|254\d{9})$/,
