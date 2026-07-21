@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "User Password is required"],
       minLength: 8,
+      match: [
+        /^(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/,
+        "Password must be at least 8 characters and include at least one special character",
+      ],
     },
     role: {
       type: String,
@@ -38,6 +42,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      match: [
+        /^(07\d{8}|01\d{8}|254\d{9})$/,
+        "Phone number must be in the format 07xxxxxxxx, 01xxxxxxxx, or 254xxxxxxxxx",
+      ],
     },
   },
   { timestamps: true },
