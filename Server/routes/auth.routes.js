@@ -1,12 +1,10 @@
 import { Router } from "express";
-import { register } from "../controllers/auth.controller.js";
+import { login, register } from "../controllers/auth.controller.js";
 
 const authRouter = Router();
 
 authRouter.post("/register", register);
-authRouter.post("/login", async (req, res) => {
-  res.send({ message: "Login controller" });
-});
+authRouter.post("/login", login);
 authRouter.post("/logout", async (req, res) => {
   res.send({ message: "Logout controller" });
 });
