@@ -1,10 +1,10 @@
 import { Router } from "express";
+import { createLeaveRequest } from "../controllers/leave.controller.js";
+import authorize from "../middlewares/auth.middleware.js";
 
 const leaveRouter = Router();
 
-leaveRouter.post("/", async (req, res) => {
-  res.send({ message: "Post a leave" });
-});
+leaveRouter.post("/", authorize, createLeaveRequest);
 leaveRouter.get("/", async (req, res) => {
   res.send({ message: "Get employee leaves" });
 });
