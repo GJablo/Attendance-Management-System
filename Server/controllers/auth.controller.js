@@ -53,3 +53,35 @@ export const register = async (req, res, next) => {
     next(error);
   }
 };
+
+export const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    // check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error("User not Found");
+    }
+
+    // check password match
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new Error("Invalid password");
+    }
+
+    // Generate Token
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES_IN,
+    });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "User login successful",
+        data: { token, user },
+      });
+  } catch (error) {
+    next(error);
+  }
+};
