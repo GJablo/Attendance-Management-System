@@ -55,3 +55,29 @@ export const deleteLeave = async (req, res, next) => {
     next(error);
   }
 };
+
+// cancel a leave by the requested user
+export const cancelLeave = async (req, res, next) => {
+  try {
+    const leave = await Leave.findById(req.params.id);
+    if (!leave) {
+      return res.status(404).json({ message: "Leave not found" });
+    }
+    if (leave.user.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ message: "Access denied! Not owner of Account" });
+    }
+    if (leave.status === "Cancelled") {
+      return res.status(400).json({ message: "Leave already Cancelled" });
+    }
+    leave.status = "Cancelled";
+    await leave.save();
+    res.status(200).json({
+      message: "Leave Cancelled successfully",
+      data: leave,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
