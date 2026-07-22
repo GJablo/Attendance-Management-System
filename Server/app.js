@@ -24,11 +24,11 @@ app.use("/api/v1/attendance", attendanceRouter);
 app.use("/api/v1/reports", reportRouter);
 app.use("/api/v1/leaves", leaveRouter);
 
-app.use(errorMiddleware);
-
 app.get("/", (req, res) => {
   res.send("Welcome to Attendance Management System API!");
 });
+
+app.use(errorMiddleware);
 
 app.listen(PORT, async () => {
   console.log(
