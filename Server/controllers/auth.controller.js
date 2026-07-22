@@ -2,7 +2,16 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-import { JWT_EXPIRES_IN, JWT_SECRET } from "../config/env.js";
+import { JWT_EXPIRES_IN, JWT_SECRET, NODE_ENV } from "../config/env.js";
+
+const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: NODE_ENV === "production",
+  sameSite: "strict",
+  maxAge: COOKIE_MAX_AGE_MS,
+};
 
 export const register = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -42,7 +51,7 @@ export const register = async (req, res, next) => {
     await session.commitTransaction();
     session.endSession();
 
-    res.status(201).json({
+    res.status(201).cookie("token", token, cookieOptions).json({
       success: true,
       message: "User registered successfully",
       data: { user: newUsers[0], token },
@@ -74,7 +83,7 @@ export const login = async (req, res, next) => {
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
-    res.status(200).json({
+    res.status(200).cookie("token", token, cookieOptions).json({
       success: true,
       message: "User login successful",
       data: { token, user },
@@ -86,7 +95,7 @@ export const login = async (req, res, next) => {
 
 export const logOut = async (req, res, next) => {
   try {
-    res.status(200).json({
+    res.status(200).clearCookie("token", cookieOptions).json({
       success: true,
       message: "User logged out successfully",
     });
