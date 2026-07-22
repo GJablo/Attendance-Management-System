@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  cancelLeave,
   createLeaveRequest,
   deleteLeave,
   getLeaves,
@@ -15,5 +16,6 @@ leaveRouter.put("/:id", authorize, isAdmin, updateLeave);
 leaveRouter.delete("/:id", authorize, isAdmin, deleteLeave);
 
 // cancel leave by requested user
+leaveRouter.post("/cancel/:id", authorize, cancelLeave);
 
 export default leaveRouter;
