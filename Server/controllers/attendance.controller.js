@@ -47,3 +47,25 @@ export const getAttendanceById = async (req, res, next) => {
     next(error);
   }
 };
+
+// update attendance
+export const updateAttendanceById = async (req, res, next) => {
+  try {
+    const attendance = await Attendance.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true },
+    );
+    if (!attendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+    res.status(200).json({
+      message: "Attendance updated successfully",
+      data: attendance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// delete attendance

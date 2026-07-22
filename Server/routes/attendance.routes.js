@@ -4,6 +4,7 @@ import {
   getAttendances,
   getUserAttendance,
   markAttendance,
+  updateAttendanceById,
 } from "../controllers/attendance.controller.js";
 import authorize, { isAdmin } from "../middlewares/auth.middleware.js";
 
@@ -13,9 +14,7 @@ attendanceRouter.post("/mark", authorize, markAttendance);
 attendanceRouter.get("/", authorize, isAdmin, getAttendances);
 attendanceRouter.get("/:id", authorize, isAdmin, getAttendanceById);
 attendanceRouter.get("/user/:id", authorize, getUserAttendance);
-attendanceRouter.put("/:id", async (req, res) => {
-  res.send({ message: "Update single attendance" });
-});
+attendanceRouter.put("/:id", authorize, isAdmin, updateAttendanceById);
 attendanceRouter.delete("/:id", async (req, res) => {
   res.send({ message: "Delete single attendance" });
 });
