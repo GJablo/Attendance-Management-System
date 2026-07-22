@@ -1,18 +1,20 @@
 import { Router } from "express";
+import {
+  createLeaveRequest,
+  getLeaves,
+  updateLeave,
+} from "../controllers/leave.controller.js";
+import authorize, { isAdmin } from "../middlewares/auth.middleware.js";
 
 const leaveRouter = Router();
 
-leaveRouter.post("/", async (req, res) => {
-  res.send({ message: "Post a leave" });
-});
-leaveRouter.get("/", async (req, res) => {
-  res.send({ message: "Get employee leaves" });
-});
-leaveRouter.put("/:id", async (req, res) => {
-  res.send({ message: "Update a leave" });
-});
+leaveRouter.post("/", authorize, createLeaveRequest);
+leaveRouter.get("/", authorize, isAdmin, getLeaves);
+leaveRouter.put("/:id", authorize, isAdmin, updateLeave);
 leaveRouter.delete("/:id", async (req, res) => {
   res.send({ message: "Delete a leave" });
 });
+
+// cancel leave by requested user
 
 export default leaveRouter;
