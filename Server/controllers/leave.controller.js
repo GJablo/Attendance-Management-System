@@ -40,3 +40,18 @@ export const updateLeave = async (req, res, next) => {
     next(error);
   }
 };
+
+// delete a leave request
+export const deleteLeave = async (req, res, next) => {
+  try {
+    const leave = await Leave.findByIdAndDelete(req.params.id);
+    if (!leave) {
+      return res.status(404).json({ message: "Requested leave not found" });
+    }
+    res
+      .status(200)
+      .json({ success: true, message: "Requested leave deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};

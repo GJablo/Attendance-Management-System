@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createLeaveRequest,
+  deleteLeave,
   getLeaves,
   updateLeave,
 } from "../controllers/leave.controller.js";
@@ -11,9 +12,7 @@ const leaveRouter = Router();
 leaveRouter.post("/", authorize, createLeaveRequest);
 leaveRouter.get("/", authorize, isAdmin, getLeaves);
 leaveRouter.put("/:id", authorize, isAdmin, updateLeave);
-leaveRouter.delete("/:id", async (req, res) => {
-  res.send({ message: "Delete a leave" });
-});
+leaveRouter.delete("/:id", authorize, isAdmin, deleteLeave);
 
 // cancel leave by requested user
 
