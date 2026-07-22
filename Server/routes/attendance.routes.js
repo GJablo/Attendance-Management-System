@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getAttendanceById,
   getAttendances,
   getUserAttendance,
   markAttendance,
@@ -10,9 +11,7 @@ const attendanceRouter = Router();
 
 attendanceRouter.post("/mark", authorize, markAttendance);
 attendanceRouter.get("/", authorize, isAdmin, getAttendances);
-attendanceRouter.get("/:id", authorize, isAdmin, async (req, res) => {
-  res.send({ message: "Getting single attendance" });
-});
+attendanceRouter.get("/:id", authorize, isAdmin, getAttendanceById);
 attendanceRouter.get("/user/:id", authorize, getUserAttendance);
 attendanceRouter.put("/:id", async (req, res) => {
   res.send({ message: "Update single attendance" });

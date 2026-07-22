@@ -35,3 +35,15 @@ export const getUserAttendance = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getAttendanceById = async (req, res, next) => {
+  try {
+    const attendance = await Attendance.findById(req.params.id);
+    if (!attendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+    res.status(200).json({ success: true, data: attendance });
+  } catch (error) {
+    next(error);
+  }
+};
