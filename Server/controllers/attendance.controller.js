@@ -1,0 +1,82 @@
+import Attendance from "../models/Attendance.js";
+
+export const markAttendance = async (req, res, next) => {
+  try {
+    const attendance = await Attendance.create({
+      ...req.body,
+      user: req.user._id,
+    });
+    res
+      .status(201)
+      .json({ message: "Attendance marked successfully", data: attendance });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAttendances = async (req, res, next) => {
+  try {
+    const attendances = await Attendance.find();
+    res.status(200).json({ success: true, data: attendances });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserAttendance = async (req, res, next) => {
+  try {
+    // check if user matches token
+    if (req.user.id !== req.params.id) {
+      return res.status(403).json({ message: "Access denied! Not owner" });
+    }
+    const userAttendance = await Attendance.find({ user: req.params.id });
+    res.status(200).json({ success: true, data: userAttendance });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAttendanceById = async (req, res, next) => {
+  try {
+    const attendance = await Attendance.findById(req.params.id);
+    if (!attendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+    res.status(200).json({ success: true, data: attendance });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// update attendance
+export const updateAttendanceById = async (req, res, next) => {
+  try {
+    const attendance = await Attendance.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true },
+    );
+    if (!attendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+    res.status(200).json({
+      message: "Attendance updated successfully",
+      data: attendance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// delete attendance
+export const deleteAttendanceById = async (req, res, next) => {
+  try {
+    const attendance = await Attendance.findByIdAndDelete(req.params.id);
+    if (!attendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+    res.status(200).json({ message: "Attendance deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
