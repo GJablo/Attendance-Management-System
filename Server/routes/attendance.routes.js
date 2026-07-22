@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  deleteAttendanceById,
   getAttendanceById,
   getAttendances,
   getUserAttendance,
@@ -15,8 +16,6 @@ attendanceRouter.get("/", authorize, isAdmin, getAttendances);
 attendanceRouter.get("/:id", authorize, isAdmin, getAttendanceById);
 attendanceRouter.get("/user/:id", authorize, getUserAttendance);
 attendanceRouter.put("/:id", authorize, isAdmin, updateAttendanceById);
-attendanceRouter.delete("/:id", async (req, res) => {
-  res.send({ message: "Delete single attendance" });
-});
+attendanceRouter.delete("/:id", authorize, isAdmin, deleteAttendanceById);
 
 export default attendanceRouter;
