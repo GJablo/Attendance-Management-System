@@ -1,4 +1,62 @@
 import Attendance from "../models/Attendance.js";
+import Leave from "../models/Leave.js";
+import User from "../models/User.js";
+
+const startOfDay = (date) => {
+  const day = new Date(date);
+  day.setHours(0, 0, 0, 0);
+  return day;
+};
+
+const endOfDay = (date) => {
+  const day = new Date(date);
+  day.setHours(23, 59, 59, 999);
+  return day;
+};
+
+const ensureDailyAttendanceFallback = async (date = new Date()) => {
+  const dayStart = startOfDay(date);
+  const dayEnd = endOfDay(date);
+
+  const [staffUsers, attendanceRecords, approvedLeaves] = await Promise.all([
+    User.find({ role: { $nin: ["student", "user"] } }).select("_id"),
+    Attendance.find({ date: { $gte: dayStart, $lte: dayEnd } }),
+    Leave.find({
+      status: "Approved",
+      startDate: { $lte: dayEnd },
+      endDate: { $gte: dayStart },
+    }).select("user"),
+  ]);
+
+  const markedUserIds = new Set(
+    attendanceRecords.map((record) => record.user.toString()),
+  );
+  const leaveUserIds = new Set(
+    approvedLeaves.map((entry) => entry.user.toString()),
+  );
+
+  const missingUsers = staffUsers.filter(
+    (user) =>
+      !markedUserIds.has(user._id.toString()) &&
+      !leaveUserIds.has(user._id.toString()),
+  );
+
+  if (missingUsers.length === 0) {
+    return attendanceRecords;
+  }
+
+  const fallbackRecords = await Attendance.insertMany(
+    missingUsers.map((user) => ({
+      user: user._id,
+      markedBy: user._id,
+      date: dayStart,
+      status: "absent",
+      remarks: "Auto-marked absent",
+    })),
+  );
+
+  return [...attendanceRecords, ...fallbackRecords];
+};
 
 export const markAttendance = async (req, res, next) => {
   try {
@@ -6,6 +64,9 @@ export const markAttendance = async (req, res, next) => {
       ...req.body,
       user: req.user._id,
     });
+
+    await ensureDailyAttendanceFallback(new Date());
+
     res
       .status(201)
       .json({ message: "Attendance marked successfully", data: attendance });
@@ -16,7 +77,7 @@ export const markAttendance = async (req, res, next) => {
 
 export const getAttendances = async (req, res, next) => {
   try {
-    const attendances = await Attendance.find();
+    const attendances = await ensureDailyAttendanceFallback(new Date());
     res.status(200).json({ success: true, data: attendances });
   } catch (error) {
     next(error);
