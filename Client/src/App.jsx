@@ -1,92 +1,97 @@
-import { useState } from 'react'
-import './App.css'
+import { useState } from "react";
+import "./App.css";
 
 const emptyForm = {
-  firstname: '',
-  lastname: '',
-  email: '',
-  password: '',
-  phone: '',
-  role: 'user',
-}
+  firstname: "",
+  lastname: "",
+  email: "",
+  password: "",
+  phone: "",
+  role: "user",
+};
 
 function App() {
-  const [mode, setMode] = useState('login')
-  const [form, setForm] = useState(emptyForm)
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
+  const [mode, setMode] = useState("login");
+  const [form, setForm] = useState(emptyForm);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
 
-  const isLogin = mode === 'login'
+  const isLogin = mode === "login";
 
   const updateField = (event) => {
-    const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
-  }
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+  };
 
   const submitAuth = async (event) => {
-    event.preventDefault()
-    setLoading(true)
-    setMessage('')
+    event.preventDefault();
+    setLoading(true);
+    setMessage("");
 
     try {
-      const endpoint = isLogin ? '/api/v1/auth/login' : '/api/v1/auth/register'
+      const endpoint = isLogin ? "/api/v1/auth/login" : "/api/v1/auth/register";
       const payload = isLogin
         ? { email: form.email, password: form.password }
-        : form
+        : form;
 
       const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Request failed')
+        throw new Error(data.error || data.message || "Request failed");
       }
 
-      const currentUser = data.data?.user || null
-      setUser(currentUser)
-      setMessage(data.message || 'Success')
+      const currentUser = data.data?.user || null;
+      setUser(currentUser);
+      setMessage(data.message || "Success");
 
       if (currentUser?._id) {
-        const profileResponse = await fetch(`/api/v1/users/${currentUser._id}`, {
-          credentials: 'include',
-        })
-        const profileData = await profileResponse.json()
+        const profileResponse = await fetch(
+          `/api/v1/users/${currentUser._id}`,
+          {
+            credentials: "include",
+          },
+        );
+        const profileData = await profileResponse.json();
 
         if (!profileResponse.ok) {
-          throw new Error(profileData.error || profileData.message || 'Profile load failed')
+          throw new Error(
+            profileData.error || profileData.message || "Profile load failed",
+          );
         }
 
-        setProfile(profileData.data)
+        setProfile(profileData.data);
       }
     } catch (error) {
-      setUser(null)
-      setProfile(null)
-      setMessage(error.message)
+      setUser(null);
+      setProfile(null);
+      setMessage(error.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const logout = async () => {
     try {
-      await fetch('/api/v1/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      })
+      await fetch("/api/v1/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
     } catch (error) {
-      console.error(error)
+      console.error(error);
     } finally {
-      setUser(null)
-      setProfile(null)
-      setMessage('You have been logged out.')
+      setUser(null);
+      setProfile(null);
+      setMessage("You have been logged out.");
     }
-  }
+  };
 
   return (
     <div className="app-shell">
@@ -102,8 +107,9 @@ function App() {
         <section className="panel panel-hero">
           <h2>Run your staff and student workflows</h2>
           <p>
-            This frontend now connects to the existing authentication and user APIs on the
-            backend, so you can sign in, register, and inspect your profile from one place.
+            This frontend now connects to the existing authentication and user
+            APIs on the backend, so you can sign in, register, and inspect your
+            profile from one place.
           </p>
 
           <div className="stats-grid">
@@ -126,20 +132,20 @@ function App() {
           <div className="toggle-row">
             <button
               type="button"
-              className={isLogin ? 'toggle active' : 'toggle'}
+              className={isLogin ? "toggle active" : "toggle"}
               onClick={() => {
-                setMode('login')
-                setMessage('')
+                setMode("login");
+                setMessage("");
               }}
             >
               Login
             </button>
             <button
               type="button"
-              className={!isLogin ? 'toggle active' : 'toggle'}
+              className={!isLogin ? "toggle active" : "toggle"}
               onClick={() => {
-                setMode('register')
-                setMessage('')
+                setMode("register");
+                setMessage("");
               }}
             >
               Register
@@ -152,17 +158,32 @@ function App() {
                 <div className="field-row">
                   <label>
                     First name
-                    <input name="firstname" value={form.firstname} onChange={updateField} required />
+                    <input
+                      name="firstname"
+                      value={form.firstname}
+                      onChange={updateField}
+                      required
+                    />
                   </label>
                   <label>
                     Last name
-                    <input name="lastname" value={form.lastname} onChange={updateField} required />
+                    <input
+                      name="lastname"
+                      value={form.lastname}
+                      onChange={updateField}
+                      required
+                    />
                   </label>
                 </div>
 
                 <label>
                   Phone
-                  <input name="phone" value={form.phone} onChange={updateField} required />
+                  <input
+                    name="phone"
+                    value={form.phone}
+                    onChange={updateField}
+                    required
+                  />
                 </label>
 
                 <label>
@@ -179,16 +200,28 @@ function App() {
 
             <label>
               Email
-              <input type="email" name="email" value={form.email} onChange={updateField} required />
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={updateField}
+                required
+              />
             </label>
 
             <label>
               Password
-              <input type="password" name="password" value={form.password} onChange={updateField} required />
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={updateField}
+                required
+              />
             </label>
 
             <button type="submit" className="primary-btn" disabled={loading}>
-              {loading ? 'Working…' : isLogin ? 'Sign in' : 'Create account'}
+              {loading ? "Working…" : isLogin ? "Sign in" : "Create account"}
             </button>
           </form>
 
@@ -220,7 +253,7 @@ function App() {
         </section>
       </main>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
