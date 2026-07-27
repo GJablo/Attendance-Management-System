@@ -1,4 +1,7 @@
 import Attendance from "../models/Attendance.js";
+import Employee from "../models/Employee.js";
+import Leave from "../models/Leave.js";
+import User from "../models/User.js";
 
 const startOfDay = (date) => {
   const d = new Date(date);
@@ -10,6 +13,121 @@ const endOfDay = (date) => {
   const d = new Date(date);
   d.setHours(23, 59, 59, 999);
   return d;
+};
+
+const parseTimeToMinutes = (value) => {
+  if (!value) return null;
+
+  const text = String(value).trim();
+  const match = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+
+  if (!match) return null;
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2] ?? 0);
+  const meridiem = match[3]?.toLowerCase();
+
+  if (meridiem === "pm" && hours < 12) hours += 12;
+  if (meridiem === "am" && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
+};
+
+const getDayKey = (value) => {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
+export const getAdminDashboardSummary = async (req, res, next) => {
+  try {
+    const today = new Date();
+    const start = startOfDay(today);
+    const end = endOfDay(today);
+    const monthStart = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      1,
+      0,
+      0,
+      0,
+      0,
+    );
+    const monthEnd = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
+
+    const [
+      staffUsers,
+      todayAttendances,
+      monthlyAttendances,
+      pendingLeaves,
+      departments,
+    ] = await Promise.all([
+      User.find({ role: { $nin: ["student", "user"] } }).select("_id role"),
+      Attendance.find({ date: { $gte: start, $lte: end } }),
+      Attendance.find({ date: { $gte: monthStart, $lte: monthEnd } }),
+      Leave.find({ status: "Pending" }),
+      Employee.distinct("department"),
+    ]);
+
+    const presentToday = todayAttendances.filter(
+      (record) => record.status === "present",
+    ).length;
+    const absentToday = todayAttendances.filter(
+      (record) => record.status === "absent",
+    ).length;
+    const lateArrivals = todayAttendances.filter((record) => {
+      if (record.status !== "present") return false;
+      const minutes = parseTimeToMinutes(record.checkIn);
+      return minutes !== null && minutes > 9 * 60 + 30;
+    }).length;
+
+    const monthlyAttendance = Array.from(
+      { length: monthEnd.getDate() },
+      (_, index) => {
+        const date = new Date(today.getFullYear(), today.getMonth(), index + 1);
+        const dayKey = getDayKey(date);
+        const dayRecords = monthlyAttendances.filter(
+          (record) => getDayKey(record.date) === dayKey,
+        );
+
+        return {
+          day: index + 1,
+          label: date.toLocaleDateString("en", {
+            month: "short",
+            day: "numeric",
+          }),
+          present: dayRecords.filter((record) => record.status === "present")
+            .length,
+          absent: dayRecords.filter((record) => record.status === "absent")
+            .length,
+          leave: dayRecords.filter((record) => record.status === "leave")
+            .length,
+        };
+      },
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalEmployees: staffUsers.length,
+        presentToday,
+        absentToday,
+        lateArrivals,
+        pendingLeaveRequests: pendingLeaves.length,
+        totalDepartments: departments.length,
+        monthlyAttendance,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const getDailyReport = async (req, res, next) => {
@@ -39,7 +157,9 @@ export const getMonthlyReport = async (req, res, next) => {
   try {
     const now = new Date();
     const year = req.query.year ? Number(req.query.year) : now.getFullYear();
-    const month = req.query.month ? Number(req.query.month) - 1 : now.getMonth();
+    const month = req.query.month
+      ? Number(req.query.month) - 1
+      : now.getMonth();
 
     const rangeStart = new Date(year, month, 1, 0, 0, 0, 0);
     const rangeEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);

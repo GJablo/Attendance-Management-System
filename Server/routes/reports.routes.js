@@ -1,6 +1,7 @@
 import { Router } from "express";
 import authorize, { isAdmin } from "../middlewares/auth.middleware.js";
 import {
+  getAdminDashboardSummary,
   getDailyReport,
   getMonthlyReport,
   getStudentReport,
@@ -10,6 +11,12 @@ import {
 
 const reportRouter = Router();
 
+reportRouter.get(
+  "/admin-dashboard",
+  authorize,
+  isAdmin,
+  getAdminDashboardSummary,
+);
 reportRouter.get("/daily", authorize, isAdmin, getDailyReport);
 reportRouter.get("/monthly", authorize, isAdmin, getMonthlyReport);
 reportRouter.get("/student/:id", authorize, getStudentReport);
