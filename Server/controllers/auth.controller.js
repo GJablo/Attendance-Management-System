@@ -51,11 +51,14 @@ export const register = async (req, res, next) => {
     await session.commitTransaction();
     session.endSession();
 
-    res.status(201).cookie("token", token, cookieOptions).json({
-      success: true,
-      message: "User registered successfully",
-      data: { user: newUsers[0], token },
-    });
+    res
+      .status(201)
+      .cookie("token", token, cookieOptions)
+      .json({
+        success: true,
+        message: "User registered successfully",
+        data: { user: newUsers[0], token },
+      });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
