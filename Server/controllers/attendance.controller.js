@@ -84,6 +84,7 @@ export const markAttendance = async (req, res, next) => {
     const attendance = await Attendance.create({
       ...req.body,
       user: req.user._id,
+      markedBy: req.user._id,
     });
 
     await ensureDailyAttendanceFallback(new Date());

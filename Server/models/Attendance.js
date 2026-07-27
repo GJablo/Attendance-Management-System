@@ -11,7 +11,7 @@ const attendanceSchema = new mongoose.Schema(
     markedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      // required: [true, "Marked by user is required"],
+      required: [true, "Marked by user is required"],
       index: true,
     },
     date: {
