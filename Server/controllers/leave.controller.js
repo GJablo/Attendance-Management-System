@@ -17,7 +17,10 @@ export const createLeaveRequest = async (req, res, next) => {
 // get employee leaves
 export const getLeaves = async (req, res, next) => {
   try {
-    const leaves = await Leave.find();
+    const leaves = await Leave.find().populate(
+      "user",
+      "firstname lastname email",
+    );
     res.status(200).json({ success: true, data: leaves });
   } catch (error) {
     next(error);
@@ -40,7 +43,7 @@ export const updateLeave = async (req, res, next) => {
   try {
     const leave = await Leave.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-    });
+    }).populate("user", "firstname lastname email");
     if (!leave) {
       return res.status(404).json({ message: "Leave not found" });
     }
