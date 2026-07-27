@@ -24,6 +24,17 @@ export const getLeaves = async (req, res, next) => {
   }
 };
 
+export const getMyLeaves = async (req, res, next) => {
+  try {
+    const leaves = await Leave.find({ user: req.user._id }).sort({
+      createdAt: -1,
+    });
+    res.status(200).json({ success: true, data: leaves });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // update a leave
 export const updateLeave = async (req, res, next) => {
   try {
