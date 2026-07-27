@@ -30,12 +30,24 @@ function App() {
   const [dashboardError, setDashboardError] = useState("");
   const [users, setUsers] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [leaveHistory, setLeaveHistory] = useState([]);
   const [activePanel, setActivePanel] = useState("overview");
+  const [leaveForm, setLeaveForm] = useState({
+    startDate: new Date().toISOString().slice(0, 10),
+    endDate: new Date().toISOString().slice(0, 10),
+    reason: "Annual",
+  });
+  const [attendanceSubmitting, setAttendanceSubmitting] = useState(false);
+  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
   const [route, setRoute] = useState(getInitialRoute);
 
   const isLogin = mode === "login";
   const isAdmin = profile?.role === "admin";
   const isAdminRoute = route === "/admin/dashboard";
+  const showUserDashboard = Boolean(
+    user && profile && profile.role !== "admin" && route === "/",
+  );
 
   const updateField = (event) => {
     const { name, value } = event.target;
@@ -125,6 +137,8 @@ function App() {
       setProfile(null);
       setDashboard(null);
       setDashboardError("");
+      setAttendanceRecords([]);
+      setLeaveHistory([]);
       setMessage("You have been logged out.");
       navigateTo("/");
     }
@@ -179,6 +193,113 @@ function App() {
       setLeaveRequests(leavesData.data || []);
     } catch (error) {
       setMessage(error.message);
+    }
+  };
+
+  const loadUserDashboardData = async () => {
+    if (!profile?._id) {
+      return;
+    }
+
+    try {
+      const [attendanceResponse, leavesResponse] = await Promise.all([
+        fetch(`/api/v1/attendance/user/${profile._id}`, {
+          credentials: "include",
+        }),
+        fetch("/api/v1/leaves/me", { credentials: "include" }),
+      ]);
+
+      const attendanceData = await attendanceResponse.json();
+      const leavesData = await leavesResponse.json();
+
+      if (!attendanceResponse.ok) {
+        throw new Error(
+          attendanceData.error ||
+            attendanceData.message ||
+            "Attendance load failed",
+        );
+      }
+
+      if (!leavesResponse.ok) {
+        throw new Error(
+          leavesData.error || leavesData.message || "Leaves load failed",
+        );
+      }
+
+      setAttendanceRecords(attendanceData.data || []);
+      setLeaveHistory(leavesData.data || []);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
+  const markAttendanceRecord = async (status) => {
+    setAttendanceSubmitting(true);
+
+    try {
+      const response = await fetch("/api/v1/attendance/mark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          date: new Date().toISOString(),
+          status,
+          checkIn: "09:00",
+          checkOut: "17:00",
+          remarks: `Marked ${status} from dashboard`,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || data.message || "Attendance submission failed",
+        );
+      }
+
+      setMessage(
+        `${status.charAt(0).toUpperCase() + status.slice(1)} marked successfully.`,
+      );
+      await loadUserDashboardData();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setAttendanceSubmitting(false);
+    }
+  };
+
+  const submitLeaveRequest = async (event) => {
+    event.preventDefault();
+    setLeaveSubmitting(true);
+
+    try {
+      const response = await fetch("/api/v1/leaves", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          startDate: leaveForm.startDate,
+          endDate: leaveForm.endDate,
+          reason: leaveForm.reason,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Leave request failed");
+      }
+
+      setLeaveForm({
+        startDate: new Date().toISOString().slice(0, 10),
+        endDate: new Date().toISOString().slice(0, 10),
+        reason: "Annual",
+      });
+      setMessage("Leave request submitted successfully.");
+      await loadUserDashboardData();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLeaveSubmitting(false);
     }
   };
 
@@ -265,15 +386,22 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!profile?.role || profile.role !== "admin") {
+    if (!profile?.role) {
       setDashboard(null);
       setDashboardError("");
       return;
     }
 
-    if (route === "/admin/dashboard") {
-      loadAdminDashboard();
-      loadAdminData();
+    if (profile.role === "admin") {
+      if (route === "/admin/dashboard") {
+        loadAdminDashboard();
+        loadAdminData();
+      }
+      return;
+    }
+
+    if (route === "/") {
+      loadUserDashboardData();
     }
   }, [profile?._id, profile?.role, route]);
 
@@ -566,121 +694,12 @@ function App() {
         </main>
       ) : (
         <main className="content-grid">
-          <section className="panel panel-hero">
-            <h2>Run your staff and student workflows</h2>
-          </section>
-
-          <section className="panel">
-            <div className="toggle-row">
-              <button
-                type="button"
-                className={isLogin ? "toggle active" : "toggle"}
-                onClick={() => {
-                  setMode("login");
-                  setMessage("");
-                }}
-              >
-                Login
-              </button>
-              <button
-                type="button"
-                className={!isLogin ? "toggle active" : "toggle"}
-                onClick={() => {
-                  setMode("register");
-                  setMessage("");
-                }}
-              >
-                Register
-              </button>
-            </div>
-
-            <form onSubmit={submitAuth} className="auth-form">
-              {!isLogin && (
-                <>
-                  <div className="field-row">
-                    <label>
-                      First name
-                      <input
-                        name="firstname"
-                        value={form.firstname}
-                        onChange={updateField}
-                        required
-                      />
-                    </label>
-                    <label>
-                      Last name
-                      <input
-                        name="lastname"
-                        value={form.lastname}
-                        onChange={updateField}
-                        required
-                      />
-                    </label>
-                  </div>
-
-                  <label>
-                    Phone
-                    <input
-                      name="phone"
-                      value={form.phone}
-                      onChange={updateField}
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    Role
-                    <select
-                      name="role"
-                      value={form.role}
-                      onChange={updateField}
-                    >
-                      <option value="user">User</option>
-                      <option value="employee">Employee</option>
-                      <option value="student">Student</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </label>
-                </>
-              )}
-
-              <label>
-                Email
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={updateField}
-                  required
-                />
-              </label>
-
-              <label>
-                Password
-                <input
-                  type="password"
-                  name="password"
-                  value={form.password}
-                  onChange={updateField}
-                  required
-                />
-              </label>
-
-              <button type="submit" className="primary-btn" disabled={loading}>
-                {loading ? "Working…" : isLogin ? "Sign in" : "Create account"}
-              </button>
-            </form>
-
-            {message && <p className="message">{message}</p>}
-
-            {user && (
-              <div className="user-card">
+          {showUserDashboard ? (
+            <section className="panel dashboard-page-panel user-dashboard-panel">
+              <div className="dashboard-header">
                 <div>
-                  <p className="eyebrow">Signed in</p>
-                  <h3>
-                    {user.firstname} {user.lastname}
-                  </h3>
-                  <p>{user.email}</p>
+                  <p className="eyebrow">Personal workspace</p>
+                  <h2>My dashboard</h2>
                 </div>
                 <button
                   type="button"
@@ -690,19 +709,295 @@ function App() {
                   Log out
                 </button>
               </div>
-            )}
 
-            {profile && (
-              <div className="profile-card">
-                <h3>Profile details</h3>
-                <p>Role: {profile.role}</p>
-                <p>Phone: {profile.phone}</p>
-                <p>
-                  Joined: {new Date(profile.createdAt).toLocaleDateString()}
-                </p>
+              {message && <p className="message">{message}</p>}
+
+              <div className="dashboard-layout user-dashboard-layout">
+                <div className="dashboard-content">
+                  <div className="dashboard-section">
+                    <h3>Mark attendance</h3>
+                    <div className="action-row">
+                      <button
+                        type="button"
+                        className="primary-btn"
+                        onClick={() => markAttendanceRecord("present")}
+                        disabled={attendanceSubmitting}
+                      >
+                        {attendanceSubmitting ? "Working…" : "Mark present"}
+                      </button>
+                      <button
+                        type="button"
+                        className="action-btn action-btn-danger"
+                        onClick={() => markAttendanceRecord("absent")}
+                        disabled={attendanceSubmitting}
+                      >
+                        Mark absent
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="dashboard-section">
+                    <h3>Request leave</h3>
+                    <form onSubmit={submitLeaveRequest} className="auth-form">
+                      <label>
+                        Start date
+                        <input
+                          type="date"
+                          value={leaveForm.startDate}
+                          onChange={(event) =>
+                            setLeaveForm((current) => ({
+                              ...current,
+                              startDate: event.target.value,
+                            }))
+                          }
+                          required
+                        />
+                      </label>
+                      <label>
+                        End date
+                        <input
+                          type="date"
+                          value={leaveForm.endDate}
+                          onChange={(event) =>
+                            setLeaveForm((current) => ({
+                              ...current,
+                              endDate: event.target.value,
+                            }))
+                          }
+                          required
+                        />
+                      </label>
+                      <label>
+                        Reason
+                        <select
+                          value={leaveForm.reason}
+                          onChange={(event) =>
+                            setLeaveForm((current) => ({
+                              ...current,
+                              reason: event.target.value,
+                            }))
+                          }
+                        >
+                          <option value="Annual">Annual</option>
+                          <option value="Sick">Sick</option>
+                          <option value="Maternity">Maternity</option>
+                          <option value="Paternity">Paternity</option>
+                          <option value="Compassionate">Compassionate</option>
+                          <option value="Study">Study</option>
+                          <option value="Emergency">Emergency</option>
+                          <option value="Unpaid">Unpaid</option>
+                        </select>
+                      </label>
+                      <button
+                        type="submit"
+                        className="primary-btn"
+                        disabled={leaveSubmitting}
+                      >
+                        {leaveSubmitting
+                          ? "Submitting…"
+                          : "Submit leave request"}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                <div className="dashboard-content">
+                  <div className="dashboard-section">
+                    <h3>Attendance history</h3>
+                    <div className="stack-list">
+                      {attendanceRecords.length ? (
+                        attendanceRecords.map((entry) => (
+                          <div key={entry._id} className="list-card">
+                            <div>
+                              <strong>
+                                {new Date(entry.date).toLocaleDateString()}
+                              </strong>
+                              <p className="muted">Status: {entry.status}</p>
+                              <p className="muted">
+                                Remarks: {entry.remarks || "—"}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p>No attendance records yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="dashboard-section">
+                    <h3>Leave status</h3>
+                    <div className="stack-list">
+                      {leaveHistory.length ? (
+                        leaveHistory.map((entry) => (
+                          <div key={entry._id} className="list-card">
+                            <div>
+                              <strong>{entry.reason}</strong>
+                              <p>
+                                {new Date(entry.startDate).toLocaleDateString()}{" "}
+                                - {new Date(entry.endDate).toLocaleDateString()}
+                              </p>
+                              <p className="muted">Status: {entry.status}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p>No leave requests yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-          </section>
+            </section>
+          ) : (
+            <>
+              <section className="panel panel-hero">
+                <h2>Run your staff and student workflows</h2>
+              </section>
+
+              <section className="panel">
+                <div className="toggle-row">
+                  <button
+                    type="button"
+                    className={isLogin ? "toggle active" : "toggle"}
+                    onClick={() => {
+                      setMode("login");
+                      setMessage("");
+                    }}
+                  >
+                    Login
+                  </button>
+                  <button
+                    type="button"
+                    className={!isLogin ? "toggle active" : "toggle"}
+                    onClick={() => {
+                      setMode("register");
+                      setMessage("");
+                    }}
+                  >
+                    Register
+                  </button>
+                </div>
+
+                <form onSubmit={submitAuth} className="auth-form">
+                  {!isLogin && (
+                    <>
+                      <div className="field-row">
+                        <label>
+                          First name
+                          <input
+                            name="firstname"
+                            value={form.firstname}
+                            onChange={updateField}
+                            required
+                          />
+                        </label>
+                        <label>
+                          Last name
+                          <input
+                            name="lastname"
+                            value={form.lastname}
+                            onChange={updateField}
+                            required
+                          />
+                        </label>
+                      </div>
+
+                      <label>
+                        Phone
+                        <input
+                          name="phone"
+                          value={form.phone}
+                          onChange={updateField}
+                          required
+                        />
+                      </label>
+
+                      <label>
+                        Role
+                        <select
+                          name="role"
+                          value={form.role}
+                          onChange={updateField}
+                        >
+                          <option value="user">User</option>
+                          <option value="employee">Employee</option>
+                          <option value="student">Student</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </label>
+                    </>
+                  )}
+
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      onChange={updateField}
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Password
+                    <input
+                      type="password"
+                      name="password"
+                      value={form.password}
+                      onChange={updateField}
+                      required
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    className="primary-btn"
+                    disabled={loading}
+                  >
+                    {loading
+                      ? "Working…"
+                      : isLogin
+                        ? "Sign in"
+                        : "Create account"}
+                  </button>
+                </form>
+
+                {message && <p className="message">{message}</p>}
+
+                {user && (
+                  <div className="user-card">
+                    <div>
+                      <p className="eyebrow">Signed in</p>
+                      <h3>
+                        {user.firstname} {user.lastname}
+                      </h3>
+                      <p>{user.email}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={logout}
+                    >
+                      Log out
+                    </button>
+                  </div>
+                )}
+
+                {profile && (
+                  <div className="profile-card">
+                    <h3>Profile details</h3>
+                    <p>Role: {profile.role}</p>
+                    <p>Phone: {profile.phone}</p>
+                    <p>
+                      Joined: {new Date(profile.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </section>
+            </>
+          )}
         </main>
       )}
     </div>

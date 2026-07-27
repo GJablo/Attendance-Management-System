@@ -299,6 +299,14 @@
   gap: 16px;
 }
 
+.user-dashboard-panel {
+  width: min(100%, 1200px);
+}
+
+.user-dashboard-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .stack-list {
   display: flex;
   flex-direction: column;
@@ -434,6 +442,10 @@
   }
 
   .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .user-dashboard-layout {
     grid-template-columns: 1fr;
   }
 
