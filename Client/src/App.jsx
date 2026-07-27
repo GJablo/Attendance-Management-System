@@ -517,21 +517,21 @@ function App() {
                               <div className="action-row">
                                 <button
                                   type="button"
-                                  className="secondary-btn"
+                                  className="action-btn action-btn-success"
                                   onClick={() =>
                                     updateLeaveStatus(entry._id, "Approved")
                                   }
                                 >
-                                  Approve
+                                  ✓ Approve
                                 </button>
                                 <button
                                   type="button"
-                                  className="secondary-btn"
+                                  className="action-btn action-btn-danger"
                                   onClick={() =>
                                     updateLeaveStatus(entry._id, "Rejected")
                                   }
                                 >
-                                  Reject
+                                  ✕ Reject
                                 </button>
                               </div>
                             </div>
