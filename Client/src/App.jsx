@@ -100,7 +100,6 @@ function App() {
           <p className="eyebrow">Full-stack management app</p>
           <h1>Attendance Management System</h1>
         </div>
-        <div className="chip">React + Express + MongoDB</div>
       </header>
 
       <main className="content-grid">
