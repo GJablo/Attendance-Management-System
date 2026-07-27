@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 const emptyForm = {
@@ -17,8 +17,12 @@ function App() {
   const [message, setMessage] = useState("");
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [dashboard, setDashboard] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState("");
 
   const isLogin = mode === "login";
+  const isAdmin = profile?.role === "admin";
 
   const updateField = (event) => {
     const { name, value } = event.target;
@@ -89,9 +93,44 @@ function App() {
     } finally {
       setUser(null);
       setProfile(null);
+      setDashboard(null);
+      setDashboardError("");
       setMessage("You have been logged out.");
     }
   };
+
+  const loadAdminDashboard = async () => {
+    setDashboardLoading(true);
+    setDashboardError("");
+
+    try {
+      const response = await fetch("/api/v1/reports/admin-dashboard", {
+        credentials: "include",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Dashboard load failed");
+      }
+
+      setDashboard(data.data);
+    } catch (error) {
+      setDashboard(null);
+      setDashboardError(error.message);
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!profile?.role || profile.role !== "admin") {
+      setDashboard(null);
+      setDashboardError("");
+      return;
+    }
+
+    loadAdminDashboard();
+  }, [profile?._id, profile?.role]);
 
   return (
     <div className="app-shell">
@@ -105,26 +144,6 @@ function App() {
       <main className="content-grid">
         <section className="panel panel-hero">
           <h2>Run your staff and student workflows</h2>
-          <p>
-            This frontend now connects to the existing authentication and user
-            APIs on the backend, so you can sign in, register, and inspect your
-            profile from one place.
-          </p>
-
-          <div className="stats-grid">
-            <article>
-              <strong>Auth</strong>
-              <span>Login and register</span>
-            </article>
-            <article>
-              <strong>Protected</strong>
-              <span>User profile retrieval</span>
-            </article>
-            <article>
-              <strong>Session</strong>
-              <span>Cookie-based access</span>
-            </article>
-          </div>
         </section>
 
         <section className="panel">
@@ -248,6 +267,84 @@ function App() {
               <p>Phone: {profile.phone}</p>
               <p>Joined: {new Date(profile.createdAt).toLocaleDateString()}</p>
             </div>
+          )}
+
+          {isAdmin && (
+            <section className="dashboard-card">
+              <div className="dashboard-header">
+                <div>
+                  <p className="eyebrow">Admin overview</p>
+                  <h3>Executive dashboard</h3>
+                </div>
+                <span className="pill">Live data</span>
+              </div>
+
+              {dashboardLoading && (
+                <p className="message">Loading dashboard…</p>
+              )}
+              {dashboardError && <p className="message">{dashboardError}</p>}
+
+              {dashboard && (
+                <>
+                  <div className="stats-grid dashboard-metrics">
+                    {[
+                      {
+                        label: "Total employees",
+                        value: dashboard.totalEmployees,
+                      },
+                      { label: "Present today", value: dashboard.presentToday },
+                      { label: "Absent today", value: dashboard.absentToday },
+                      { label: "Late arrivals", value: dashboard.lateArrivals },
+                      {
+                        label: "Pending leave",
+                        value: dashboard.pendingLeaveRequests,
+                      },
+                      {
+                        label: "Departments",
+                        value: dashboard.totalDepartments,
+                      },
+                    ].map((item) => (
+                      <article key={item.label} className="metric-card">
+                        <span className="metric-value">{item.value}</span>
+                        <span className="metric-label">{item.label}</span>
+                      </article>
+                    ))}
+                  </div>
+
+                  <div className="dashboard-section">
+                    <h4>Monthly attendance</h4>
+                    <div className="chart-list">
+                      {dashboard.monthlyAttendance?.length ? (
+                        dashboard.monthlyAttendance.map((entry) => (
+                          <div key={entry.day} className="bar-row">
+                            <span className="bar-label">{entry.label}</span>
+                            <div className="bar-track" aria-hidden="true">
+                              <div
+                                className="bar-present"
+                                style={{ flex: entry.present || 0 }}
+                              />
+                              <div
+                                className="bar-absent"
+                                style={{ flex: entry.absent || 0 }}
+                              />
+                              <div
+                                className="bar-leave"
+                                style={{ flex: entry.leave || 0 }}
+                              />
+                            </div>
+                            <span className="bar-summary">
+                              {entry.present}/{entry.absent}/{entry.leave}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <p>No attendance records for this month yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
           )}
         </section>
       </main>
