@@ -28,6 +28,9 @@ function App() {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
+  const [users, setUsers] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [activePanel, setActivePanel] = useState("overview");
   const [route, setRoute] = useState(getInitialRoute);
 
   const isLogin = mode === "login";
@@ -150,6 +153,104 @@ function App() {
     }
   };
 
+  const loadAdminData = async () => {
+    try {
+      const [usersResponse, leavesResponse] = await Promise.all([
+        fetch("/api/v1/users", { credentials: "include" }),
+        fetch("/api/v1/leaves", { credentials: "include" }),
+      ]);
+
+      const usersData = await usersResponse.json();
+      const leavesData = await leavesResponse.json();
+
+      if (!usersResponse.ok) {
+        throw new Error(
+          usersData.error || usersData.message || "Users load failed",
+        );
+      }
+
+      if (!leavesResponse.ok) {
+        throw new Error(
+          leavesData.error || leavesData.message || "Leaves load failed",
+        );
+      }
+
+      setUsers(usersData.data || []);
+      setLeaveRequests(leavesData.data || []);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
+  const updateUserRole = async (userId, nextRole) => {
+    try {
+      const response = await fetch(`/api/v1/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role: nextRole }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Role update failed");
+      }
+
+      setUsers((current) =>
+        current.map((entry) => (entry._id === userId ? data.data : entry)),
+      );
+      setMessage("User role updated successfully.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
+  const updateLeaveStatus = async (leaveId, nextStatus) => {
+    try {
+      const response = await fetch(`/api/v1/leaves/${leaveId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Leave update failed");
+      }
+
+      setLeaveRequests((current) =>
+        current.map((entry) => (entry._id === leaveId ? data.data : entry)),
+      );
+      setMessage(`Leave request ${nextStatus.toLowerCase()} successfully.`);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
+  const downloadReports = async () => {
+    try {
+      const response = await fetch("/api/v1/reports/export/excel", {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Report download failed");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "attendance-report.csv";
+      link.click();
+      window.URL.revokeObjectURL(url);
+      setMessage("Report downloaded successfully.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
@@ -172,6 +273,7 @@ function App() {
 
     if (route === "/admin/dashboard") {
       loadAdminDashboard();
+      loadAdminData();
     }
   }, [profile?._id, profile?.role, route]);
 
@@ -234,62 +336,231 @@ function App() {
               <p className="message">{dashboardError}</p>
             )}
 
-            {isAdmin && dashboard && (
-              <>
-                <div className="stats-grid dashboard-metrics">
-                  {[
-                    {
-                      label: "Total employees",
-                      value: dashboard.totalEmployees,
-                    },
-                    { label: "Present today", value: dashboard.presentToday },
-                    { label: "Absent today", value: dashboard.absentToday },
-                    { label: "Late arrivals", value: dashboard.lateArrivals },
-                    {
-                      label: "Pending leave",
-                      value: dashboard.pendingLeaveRequests,
-                    },
-                    { label: "Departments", value: dashboard.totalDepartments },
-                  ].map((item) => (
-                    <article key={item.label} className="metric-card">
-                      <span className="metric-value">{item.value}</span>
-                      <span className="metric-label">{item.label}</span>
-                    </article>
-                  ))}
-                </div>
+            {message && isAdmin && <p className="message">{message}</p>}
 
-                <div className="dashboard-section">
-                  <h4>Monthly attendance</h4>
-                  <div className="chart-list">
-                    {dashboard.monthlyAttendance?.length ? (
-                      dashboard.monthlyAttendance.map((entry) => (
-                        <div key={entry.day} className="bar-row">
-                          <span className="bar-label">{entry.label}</span>
-                          <div className="bar-track" aria-hidden="true">
-                            <div
-                              className="bar-present"
-                              style={{ flex: entry.present || 0 }}
-                            />
-                            <div
-                              className="bar-absent"
-                              style={{ flex: entry.absent || 0 }}
-                            />
-                            <div
-                              className="bar-leave"
-                              style={{ flex: entry.leave || 0 }}
-                            />
-                          </div>
-                          <span className="bar-summary">
-                            {entry.present}/{entry.absent}/{entry.leave}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <p>No attendance records for this month yet.</p>
-                    )}
+            {isAdmin && dashboard && (
+              <div className="dashboard-layout">
+                <aside className="sidebar-card">
+                  <h3>Admin tools</h3>
+                  <div className="sidebar-nav">
+                    <button
+                      type="button"
+                      className={
+                        activePanel === "overview"
+                          ? "sidebar-link active"
+                          : "sidebar-link"
+                      }
+                      onClick={() => setActivePanel("overview")}
+                    >
+                      Overview
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        activePanel === "users"
+                          ? "sidebar-link active"
+                          : "sidebar-link"
+                      }
+                      onClick={() => setActivePanel("users")}
+                    >
+                      Users
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        activePanel === "leaves"
+                          ? "sidebar-link active"
+                          : "sidebar-link"
+                      }
+                      onClick={() => setActivePanel("leaves")}
+                    >
+                      Leave requests
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        activePanel === "reports"
+                          ? "sidebar-link active"
+                          : "sidebar-link"
+                      }
+                      onClick={() => setActivePanel("reports")}
+                    >
+                      Reports
+                    </button>
                   </div>
+                </aside>
+
+                <div className="dashboard-content">
+                  {activePanel === "overview" && (
+                    <>
+                      <div className="stats-grid dashboard-metrics">
+                        {[
+                          {
+                            label: "Total employees",
+                            value: dashboard.totalEmployees,
+                          },
+                          {
+                            label: "Present today",
+                            value: dashboard.presentToday,
+                          },
+                          {
+                            label: "Absent today",
+                            value: dashboard.absentToday,
+                          },
+                          {
+                            label: "Late arrivals",
+                            value: dashboard.lateArrivals,
+                          },
+                          {
+                            label: "Pending leave",
+                            value: dashboard.pendingLeaveRequests,
+                          },
+                          {
+                            label: "Departments",
+                            value: dashboard.totalDepartments,
+                          },
+                        ].map((item) => (
+                          <article key={item.label} className="metric-card">
+                            <span className="metric-value">{item.value}</span>
+                            <span className="metric-label">{item.label}</span>
+                          </article>
+                        ))}
+                      </div>
+
+                      <div className="dashboard-section">
+                        <h4>Monthly attendance</h4>
+                        <div className="chart-list">
+                          {dashboard.monthlyAttendance?.length ? (
+                            dashboard.monthlyAttendance.map((entry) => (
+                              <div key={entry.day} className="bar-row">
+                                <span className="bar-label">{entry.label}</span>
+                                <div className="bar-track" aria-hidden="true">
+                                  <div
+                                    className="bar-present"
+                                    style={{ flex: entry.present || 0 }}
+                                  />
+                                  <div
+                                    className="bar-absent"
+                                    style={{ flex: entry.absent || 0 }}
+                                  />
+                                  <div
+                                    className="bar-leave"
+                                    style={{ flex: entry.leave || 0 }}
+                                  />
+                                </div>
+                                <span className="bar-summary">
+                                  {entry.present}/{entry.absent}/{entry.leave}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <p>No attendance records for this month yet.</p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {activePanel === "users" && (
+                    <div className="dashboard-section">
+                      <h4>Manage users</h4>
+                      <div className="stack-list">
+                        {users.length ? (
+                          users.map((entry) => (
+                            <div key={entry._id} className="list-card">
+                              <div>
+                                <strong>
+                                  {entry.firstname} {entry.lastname}
+                                </strong>
+                                <p>{entry.email}</p>
+                                <p className="muted">Role: {entry.role}</p>
+                              </div>
+                              <select
+                                value={entry.role}
+                                onChange={(event) =>
+                                  updateUserRole(entry._id, event.target.value)
+                                }
+                              >
+                                <option value="user">User</option>
+                                <option value="employee">Employee</option>
+                                <option value="admin">Admin</option>
+                                <option value="teacher">Teacher</option>
+                                <option value="hr">HR</option>
+                              </select>
+                            </div>
+                          ))
+                        ) : (
+                          <p>No users found.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {activePanel === "leaves" && (
+                    <div className="dashboard-section">
+                      <h4>Manage leave requests</h4>
+                      <div className="stack-list">
+                        {leaveRequests.length ? (
+                          leaveRequests.map((entry) => (
+                            <div key={entry._id} className="list-card">
+                              <div>
+                                <strong>{entry.reason}</strong>
+                                <p>
+                                  {new Date(
+                                    entry.startDate,
+                                  ).toLocaleDateString()}{" "}
+                                  -{" "}
+                                  {new Date(entry.endDate).toLocaleDateString()}
+                                </p>
+                                <p className="muted">Status: {entry.status}</p>
+                              </div>
+                              <div className="action-row">
+                                <button
+                                  type="button"
+                                  className="secondary-btn"
+                                  onClick={() =>
+                                    updateLeaveStatus(entry._id, "Approved")
+                                  }
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  className="secondary-btn"
+                                  onClick={() =>
+                                    updateLeaveStatus(entry._id, "Rejected")
+                                  }
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p>No leave requests found.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {activePanel === "reports" && (
+                    <div className="dashboard-section">
+                      <h4>Generate reports</h4>
+                      <p className="muted">
+                        Download attendance reports in CSV format for the
+                        current data set.
+                      </p>
+                      <button
+                        type="button"
+                        className="primary-btn"
+                        onClick={downloadReports}
+                      >
+                        Download report
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </>
+              </div>
             )}
           </section>
         </main>
