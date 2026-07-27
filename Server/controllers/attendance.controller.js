@@ -19,7 +19,9 @@ const ensureDailyAttendanceFallback = async (date = new Date()) => {
   const dayEnd = endOfDay(date);
 
   const [staffUsers, attendanceRecords, approvedLeaves] = await Promise.all([
-    User.find({ role: { $nin: ["student", "user"] } }).select("_id"),
+    User.find({
+      role: { $nin: ["student", "user", "hr", "employee", "teacher"] },
+    }).select("_id"),
     Attendance.find({ date: { $gte: dayStart, $lte: dayEnd } }),
     Leave.find({
       status: "Approved",
@@ -45,17 +47,36 @@ const ensureDailyAttendanceFallback = async (date = new Date()) => {
     return attendanceRecords;
   }
 
-  const fallbackRecords = await Attendance.insertMany(
-    missingUsers.map((user) => ({
-      user: user._id,
-      markedBy: user._id,
-      date: dayStart,
-      status: "absent",
-      remarks: "Auto-marked absent",
-    })),
+  const existingMissingRecords = await Attendance.find({
+    user: { $in: missingUsers.map((user) => user._id) },
+    date: { $gte: dayStart, $lte: dayEnd },
+  }).select("user");
+
+  const existingMissingUserIds = new Set(
+    existingMissingRecords.map((record) => record.user.toString()),
   );
 
-  return [...attendanceRecords, ...fallbackRecords];
+  const recordsToCreate = missingUsers.filter(
+    (user) => !existingMissingUserIds.has(user._id.toString()),
+  );
+
+  if (recordsToCreate.length > 0) {
+    await Attendance.insertMany(
+      recordsToCreate.map((user) => ({
+        user: user._id,
+        markedBy: user._id,
+        date: dayStart,
+        status: "absent",
+        remarks: "Auto-marked absent",
+      })),
+    );
+  }
+
+  const updatedRecords = await Attendance.find({
+    date: { $gte: dayStart, $lte: dayEnd },
+  });
+
+  return updatedRecords;
 };
 
 export const markAttendance = async (req, res, next) => {
