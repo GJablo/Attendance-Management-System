@@ -18,6 +18,8 @@ const getInitialRoute = () => {
   return window.location.pathname || "/";
 };
 
+const getTodayKey = () => new Date().toISOString().slice(0, 10);
+
 function App() {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState(emptyForm);
@@ -32,6 +34,7 @@ function App() {
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [leaveHistory, setLeaveHistory] = useState([]);
+  const [todayAttendance, setTodayAttendance] = useState([]);
   const [activePanel, setActivePanel] = useState("overview");
   const [leaveForm, setLeaveForm] = useState({
     startDate: new Date().toISOString().slice(0, 10),
@@ -139,6 +142,7 @@ function App() {
       setDashboardError("");
       setAttendanceRecords([]);
       setLeaveHistory([]);
+      setTodayAttendance([]);
       setMessage("You have been logged out.");
       navigateTo("/");
     }
@@ -169,13 +173,18 @@ function App() {
 
   const loadAdminData = async () => {
     try {
-      const [usersResponse, leavesResponse] = await Promise.all([
-        fetch("/api/v1/users", { credentials: "include" }),
-        fetch("/api/v1/leaves", { credentials: "include" }),
-      ]);
+      const [usersResponse, leavesResponse, attendanceResponse] =
+        await Promise.all([
+          fetch("/api/v1/users", { credentials: "include" }),
+          fetch("/api/v1/leaves", { credentials: "include" }),
+          fetch(`/api/v1/attendance?date=${getTodayKey()}`, {
+            credentials: "include",
+          }),
+        ]);
 
       const usersData = await usersResponse.json();
       const leavesData = await leavesResponse.json();
+      const attendanceData = await attendanceResponse.json();
 
       if (!usersResponse.ok) {
         throw new Error(
@@ -189,8 +198,17 @@ function App() {
         );
       }
 
+      if (!attendanceResponse.ok) {
+        throw new Error(
+          attendanceData.error ||
+            attendanceData.message ||
+            "Attendance load failed",
+        );
+      }
+
       setUsers(usersData.data || []);
       setLeaveRequests(leavesData.data || []);
+      setTodayAttendance(attendanceData.data || []);
     } catch (error) {
       setMessage(error.message);
     }
@@ -405,6 +423,51 @@ function App() {
     }
   }, [profile?._id, profile?.role, route]);
 
+  // Derive today's attendance breakdown for the admin attendance panel.
+  const todayKey = getTodayKey();
+
+  const onLeaveToday = leaveRequests.filter((entry) => {
+    if (entry.status !== "Approved") {
+      return false;
+    }
+
+    const start = entry.startDate ? entry.startDate.slice(0, 10) : null;
+    const end = entry.endDate ? entry.endDate.slice(0, 10) : null;
+
+    if (!start || !end) {
+      return false;
+    }
+
+    return todayKey >= start && todayKey <= end;
+  });
+
+  const onLeaveUserIds = new Set(
+    onLeaveToday.map((entry) => entry.user?._id || entry.user).filter(Boolean),
+  );
+
+  const todaysRecords = todayAttendance.filter(
+    (entry) => entry.date && entry.date.slice(0, 10) === todayKey,
+  );
+
+  const presentToday = todaysRecords.filter(
+    (entry) => entry.status?.toLowerCase() === "present",
+  );
+
+  const absentToday = todaysRecords.filter(
+    (entry) => entry.status?.toLowerCase() === "absent",
+  );
+
+  const markedUserIds = new Set(
+    todaysRecords.map((entry) => entry.user?._id || entry.user).filter(Boolean),
+  );
+
+  const unmarkedToday = users.filter(
+    (entry) =>
+      entry.role !== "admin" &&
+      !markedUserIds.has(entry._id) &&
+      !onLeaveUserIds.has(entry._id),
+  );
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -481,6 +544,17 @@ function App() {
                       onClick={() => setActivePanel("overview")}
                     >
                       Overview
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        activePanel === "attendance"
+                          ? "sidebar-link active"
+                          : "sidebar-link"
+                      }
+                      onClick={() => setActivePanel("attendance")}
+                    >
+                      Attendance today
                     </button>
                     <button
                       type="button"
@@ -587,6 +661,142 @@ function App() {
                         </div>
                       </div>
                     </>
+                  )}
+
+                  {activePanel === "attendance" && (
+                    <div className="dashboard-section">
+                      <div className="attendance-summary-row">
+                        <h4>Today&apos;s attendance</h4>
+                        <span className="muted">
+                          {new Date().toLocaleDateString(undefined, {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </span>
+                      </div>
+
+                      <div className="attendance-columns">
+                        <div className="attendance-column">
+                          <div className="attendance-column-header">
+                            <span className="status-dot status-dot-present" />
+                            <h5>Present</h5>
+                            <span className="count-badge count-badge-present">
+                              {presentToday.length}
+                            </span>
+                          </div>
+                          <div className="stack-list attendance-list">
+                            {presentToday.length ? (
+                              presentToday.map((entry) => (
+                                <div
+                                  key={entry._id}
+                                  className="list-card attendance-card"
+                                >
+                                  <div>
+                                    <strong>
+                                      {entry.user?.firstname || "Unknown"}{" "}
+                                      {entry.user?.lastname || ""}
+                                    </strong>
+                                    <p className="muted">
+                                      {entry.user?.email || "No email on file"}
+                                    </p>
+                                    <p className="muted">
+                                      Check-in: {entry.checkIn || "—"}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p>No one has been marked present yet.</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="attendance-column">
+                          <div className="attendance-column-header">
+                            <span className="status-dot status-dot-absent" />
+                            <h5>Absent</h5>
+                            <span className="count-badge count-badge-absent">
+                              {absentToday.length}
+                            </span>
+                          </div>
+                          <div className="stack-list attendance-list">
+                            {absentToday.length ? (
+                              absentToday.map((entry) => (
+                                <div
+                                  key={entry._id}
+                                  className="list-card attendance-card"
+                                >
+                                  <div>
+                                    <strong>
+                                      {entry.user?.firstname || "Unknown"}{" "}
+                                      {entry.user?.lastname || ""}
+                                    </strong>
+                                    <p className="muted">
+                                      {entry.user?.email || "No email on file"}
+                                    </p>
+                                    <p className="muted">
+                                      Remarks: {entry.remarks || "—"}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p>No absences recorded today.</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="attendance-column">
+                          <div className="attendance-column-header">
+                            <span className="status-dot status-dot-leave" />
+                            <h5>On leave</h5>
+                            <span className="count-badge count-badge-leave">
+                              {onLeaveToday.length}
+                            </span>
+                          </div>
+                          <div className="stack-list attendance-list">
+                            {onLeaveToday.length ? (
+                              onLeaveToday.map((entry) => (
+                                <div
+                                  key={entry._id}
+                                  className="list-card attendance-card"
+                                >
+                                  <div>
+                                    <strong>
+                                      {entry.user?.firstname || "Unknown"}{" "}
+                                      {entry.user?.lastname || ""}
+                                    </strong>
+                                    <p className="muted">
+                                      {entry.reason} leave until{" "}
+                                      {new Date(
+                                        entry.endDate,
+                                      ).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p>No one is on approved leave today.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {unmarkedToday.length > 0 && (
+                        <div className="attendance-unmarked">
+                          <h5>Not yet marked ({unmarkedToday.length})</h5>
+                          <div className="chip-row">
+                            {unmarkedToday.map((entry) => (
+                              <span key={entry._id} className="chip-outline">
+                                {entry.firstname} {entry.lastname}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {activePanel === "users" && (
