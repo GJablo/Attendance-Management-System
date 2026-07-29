@@ -1,6 +1,6 @@
 # Attendance Management System
 
-A full-stack attendance and leave management system built with a Node.js/Express backend and MongoDB data storage. The current workspace contains a working `Server` backend and an empty `Client` folder reserved for future frontend work.
+A full-stack attendance and leave management system built with a Node.js/Express backend, MongoDB data storage, and a React (Vite) frontend.
 
 ## Project Status
 
@@ -8,9 +8,11 @@ A full-stack attendance and leave management system built with a Node.js/Express
 - Data models for `User`, `Employee`, `Student`, `Attendance`, and `Leave` are defined with Mongoose
 - Authentication, authorization, attendance tracking, leave requests, and reporting routes are available
 - Seed data script added for local testing
-- Client folder is currently empty
+- Frontend is implemented in `Client/` using React and Vite
 
 ## Technologies
+
+### Backend
 
 - Node.js
 - Express
@@ -21,11 +23,28 @@ A full-stack attendance and leave management system built with a Node.js/Express
 - cookie-parser
 - nodemon (development)
 
+### Frontend
+
+- React
+- Vite
+- ESLint
+
 ## Repository Structure
 
 ```
 ManagementSystem/
-├── Client/                # frontend placeholder
+├── Client/                # frontend implementation (React + Vite)
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── App.jsx
+│   │   ├── App.css
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── index.html
+│   ├── package.json
+│   ├── eslint.config.js
+│   └── vite.config.js
 ├── Server/                # backend API implementation
 │   ├── config/
 │   ├── controllers/
@@ -50,6 +69,16 @@ ManagementSystem/
 - `Server/middlewares/` - authentication and error handling
 - `Server/scripts/seedData.js` - sample data seed script
 
+## Client Structure
+
+- `Client/index.html` - HTML entry point
+- `Client/src/main.jsx` - React application entry point
+- `Client/src/App.jsx` - root application component
+- `Client/src/App.css` / `Client/src/index.css` - application styles
+- `Client/src/assets/` - static assets (images, icons)
+- `Client/vite.config.js` - Vite build configuration
+- `Client/eslint.config.js` - ESLint configuration
+
 ## Getting Started
 
 ### Prerequisites
@@ -58,7 +87,7 @@ ManagementSystem/
 - npm or pnpm
 - MongoDB instance
 
-### Setup
+### Backend Setup
 
 1. Navigate to the server folder:
 
@@ -81,6 +110,28 @@ npm run dev
 ```
 
 The server listens on the port defined in `.env.development.local` (default: `5500`).
+
+### Frontend Setup
+
+1. Navigate to the client folder:
+
+```bash
+cd Client
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Start the development server:
+
+```bash
+npm run dev
+```
+
+By default, Vite serves the frontend on `http://localhost:5173`. Ensure the backend is running so the frontend can communicate with the API.
 
 ## Seed Sample Data
 
@@ -143,14 +194,14 @@ This will insert sample users, employees, students, attendance records, and leav
 
 ## Notes
 
-- The `Client/` folder is currently empty and is a placeholder for a future frontend.
+- The `Client/` folder now contains a React (Vite) frontend implementation.
 - `reports/export/pdf` currently returns a `501 Not Implemented` response.
 - Passwords are hashed before being stored.
 - Error handling is centralized in `Server/middlewares/error.middleware.js`.
 
 ## Future Improvements
 
-- Add frontend implementation in `Client/`
+- Build out remaining frontend views and connect them to the backend API
 - Implement PDF report export
 - Add better request validation and API documentation
 - Improve role-based access control
