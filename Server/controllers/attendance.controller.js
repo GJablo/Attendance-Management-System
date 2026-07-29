@@ -81,13 +81,31 @@ const ensureDailyAttendanceFallback = async (date = new Date()) => {
 
 export const markAttendance = async (req, res, next) => {
   try {
+    const now = new Date();
+    const dayStart = startOfDay(now);
+    const dayEnd = endOfDay(now);
+
+    // Prevent marking attendance more than once per day for the same user
+    const existingAttendance = await Attendance.findOne({
+      user: req.user._id,
+      date: { $gte: dayStart, $lte: dayEnd },
+    });
+
+    if (existingAttendance) {
+      return res.status(409).json({
+        message: "Attendance already marked for today",
+        data: existingAttendance,
+      });
+    }
+
     const attendance = await Attendance.create({
       ...req.body,
       user: req.user._id,
       markedBy: req.user._id,
+      date: dayStart,
     });
 
-    await ensureDailyAttendanceFallback(new Date());
+    await ensureDailyAttendanceFallback(now);
 
     res
       .status(201)
