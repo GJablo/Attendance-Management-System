@@ -189,21 +189,8 @@ function App() {
         );
       }
 
-      // Create a user lookup map
-      // const userMap = {};
-      // (usersData.data || []).forEach((user) => {
-      //   userMap[user._id] = user;
-      // });
-
-      // Enrich leave requests with user data
-      // const enrichedLeaves = (leavesData.data || []).map((leave) => ({
-      //   ...leave,
-      //   user: userMap[leave.user] || null,
-      // }));
-
       setUsers(usersData.data || []);
       setLeaveRequests(leavesData.data || []);
-      //setLeaveRequests(enrichedLeaves);
     } catch (error) {
       setMessage(error.message);
     }
