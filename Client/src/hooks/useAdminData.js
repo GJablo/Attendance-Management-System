@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { fetchAdminDashboard, downloadAttendanceReport } from "../api/reports";
-import { fetchUsers, updateUserRole as updateUserRoleRequest } from "../api/users";
+import {
+  fetchUsers,
+  updateUserRole as updateUserRoleRequest,
+  deleteUser as deleteUserRequest,
+} from "../api/users";
 import {
   fetchAllLeaves,
   updateLeaveStatus as updateLeaveStatusRequest,
@@ -62,6 +66,16 @@ export const useAdminData = ({ isActive, setMessage }) => {
     }
   };
 
+  const deleteUser = async (userId) => {
+    try {
+      await deleteUserRequest(userId);
+      setUsers((current) => current.filter((entry) => entry._id !== userId));
+      setMessage("User deleted successfully.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
   const updateLeaveStatus = async (leaveId, nextStatus) => {
     try {
       const data = await updateLeaveStatusRequest(leaveId, nextStatus);
@@ -116,6 +130,7 @@ export const useAdminData = ({ isActive, setMessage }) => {
     activePanel,
     setActivePanel,
     updateUserRole,
+    deleteUser,
     updateLeaveStatus,
     downloadReports,
     reset,

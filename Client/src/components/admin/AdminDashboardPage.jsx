@@ -7,6 +7,7 @@ import ReportsPanel from "./ReportsPanel";
 
 function AdminDashboardPage({
   isAdmin,
+  currentUserId,
   message,
   dashboard,
   dashboardLoading,
@@ -17,6 +18,7 @@ function AdminDashboardPage({
   activePanel,
   setActivePanel,
   onUpdateUserRole,
+  onDeleteUser,
   onUpdateLeaveStatus,
   onDownloadReports,
   onBack,
@@ -49,15 +51,22 @@ function AdminDashboardPage({
         {isAdmin && dashboardLoading && (
           <p className="message">Loading dashboard…</p>
         )}
-        {isAdmin && dashboardError && <p className="message">{dashboardError}</p>}
+        {isAdmin && dashboardError && (
+          <p className="message">{dashboardError}</p>
+        )}
         {message && isAdmin && <p className="message">{message}</p>}
 
         {isAdmin && dashboard && (
           <div className="dashboard-layout">
-            <AdminSidebar activePanel={activePanel} setActivePanel={setActivePanel} />
+            <AdminSidebar
+              activePanel={activePanel}
+              setActivePanel={setActivePanel}
+            />
 
             <div className="dashboard-content">
-              {activePanel === "overview" && <OverviewPanel dashboard={dashboard} />}
+              {activePanel === "overview" && (
+                <OverviewPanel dashboard={dashboard} />
+              )}
 
               {activePanel === "attendance" && (
                 <AttendancePanel
@@ -68,7 +77,12 @@ function AdminDashboardPage({
               )}
 
               {activePanel === "users" && (
-                <UsersPanel users={users} onUpdateRole={onUpdateUserRole} />
+                <UsersPanel
+                  users={users}
+                  currentUserId={currentUserId}
+                  onUpdateRole={onUpdateUserRole}
+                  onDeleteUser={onDeleteUser}
+                />
               )}
 
               {activePanel === "leaves" && (
