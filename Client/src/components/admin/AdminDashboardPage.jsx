@@ -20,6 +20,7 @@ function AdminDashboardPage({
   onUpdateUserRole,
   onDeleteUser,
   onUpdateLeaveStatus,
+  onDeleteLeave,
   onDownloadReports,
   onBack,
   onLogout,
@@ -89,6 +90,7 @@ function AdminDashboardPage({
                 <LeavesPanel
                   leaveRequests={leaveRequests}
                   onUpdateStatus={onUpdateLeaveStatus}
+                  onDeleteLeave={onDeleteLeave}
                 />
               )}
 

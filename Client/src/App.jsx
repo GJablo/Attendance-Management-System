@@ -82,6 +82,7 @@ function App() {
           onUpdateUserRole={admin.updateUserRole}
           onDeleteUser={admin.deleteUser}
           onUpdateLeaveStatus={admin.updateLeaveStatus}
+          onDeleteLeave={admin.deleteLeave}
           onDownloadReports={admin.downloadReports}
           onBack={() => navigateTo("/")}
           onLogout={handleLogout}

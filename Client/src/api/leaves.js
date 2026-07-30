@@ -18,3 +18,6 @@ export const updateLeaveStatus = (leaveId, status) =>
 
 export const cancelLeave = (leaveId) =>
   request(`/api/v1/leaves/cancel/${leaveId}`, { method: "POST" });
+
+export const deleteLeave = (leaveId) =>
+  request(`/api/v1/leaves/${leaveId}`, { method: "DELETE" });

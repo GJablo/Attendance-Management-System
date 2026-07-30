@@ -8,6 +8,7 @@ import {
 import {
   fetchAllLeaves,
   updateLeaveStatus as updateLeaveStatusRequest,
+  deleteLeave as deleteLeaveRequest,
 } from "../api/leaves";
 import { fetchTodayAttendance } from "../api/attendance";
 
@@ -88,6 +89,18 @@ export const useAdminData = ({ isActive, setMessage }) => {
     }
   };
 
+  const deleteLeave = async (leaveId) => {
+    try {
+      await deleteLeaveRequest(leaveId);
+      setLeaveRequests((current) =>
+        current.filter((entry) => entry._id !== leaveId),
+      );
+      setMessage("Leave request deleted successfully.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
   const downloadReports = async () => {
     try {
       const blob = await downloadAttendanceReport();
@@ -132,6 +145,7 @@ export const useAdminData = ({ isActive, setMessage }) => {
     updateUserRole,
     deleteUser,
     updateLeaveStatus,
+    deleteLeave,
     downloadReports,
     reset,
   };
