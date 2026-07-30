@@ -14,15 +14,23 @@ const endOfDay = (date) => {
   return day;
 };
 
+// Roles that are expected to check in daily and should be auto-marked
+// absent if they have no attendance record and no approved leave.
+// Adjust this list if "student" should also be tracked.
+const TRACKED_STAFF_ROLES = ["employee", "teacher", "hr"];
+
 const ensureDailyAttendanceFallback = async (date = new Date()) => {
   const dayStart = startOfDay(date);
   const dayEnd = endOfDay(date);
 
   const [staffUsers, attendanceRecords, approvedLeaves] = await Promise.all([
     User.find({
-      role: { $nin: ["student", "user", "hr", "employee", "teacher"] },
+      role: { $in: TRACKED_STAFF_ROLES },
     }).select("_id"),
-    Attendance.find({ date: { $gte: dayStart, $lte: dayEnd } }),
+    Attendance.find({ date: { $gte: dayStart, $lte: dayEnd } }).populate(
+      "user",
+      "firstname lastname email role",
+    ),
     Leave.find({
       status: "Approved",
       startDate: { $lte: dayEnd },
@@ -30,8 +38,20 @@ const ensureDailyAttendanceFallback = async (date = new Date()) => {
     }).select("user"),
   ]);
 
+  // Only auto-mark people absent once the day is actually over. While the
+  // day is still in progress, people should still have the chance to check
+  // in themselves — return whatever real records exist so far without
+  // manufacturing "absent" placeholders.
+  const dayHasEnded = new Date() > dayEnd;
+
+  if (!dayHasEnded) {
+    return attendanceRecords;
+  }
+
   const markedUserIds = new Set(
-    attendanceRecords.map((record) => record.user.toString()),
+    attendanceRecords
+      .map((record) => record.user?._id?.toString())
+      .filter(Boolean),
   );
   const leaveUserIds = new Set(
     approvedLeaves.map((entry) => entry.user.toString()),
@@ -74,7 +94,7 @@ const ensureDailyAttendanceFallback = async (date = new Date()) => {
 
   const updatedRecords = await Attendance.find({
     date: { $gte: dayStart, $lte: dayEnd },
-  });
+  }).populate("user", "firstname lastname email role");
 
   return updatedRecords;
 };
