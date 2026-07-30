@@ -17,6 +17,7 @@ function App() {
     isLogin,
     form,
     loading,
+    authLoading,
     message,
     updateField,
     switchMode,
@@ -47,6 +48,14 @@ function App() {
     admin.reset();
     userDashboard.reset();
   };
+
+  if (authLoading) {
+    return (
+      <div className="app-shell">
+        <div className="app-loading">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">

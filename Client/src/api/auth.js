@@ -12,5 +12,6 @@ export const register = (payload) =>
     body: JSON.stringify(payload),
   });
 
-export const logout = () =>
-  request("/api/v1/auth/logout", { method: "POST" });
+export const logout = () => request("/api/v1/auth/logout", { method: "POST" });
+
+export const getMe = () => request("/api/v1/auth/me");
