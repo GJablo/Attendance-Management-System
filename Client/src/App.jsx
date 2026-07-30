@@ -18,8 +18,6 @@ const getInitialRoute = () => {
   return window.location.pathname || "/";
 };
 
-const getTodayKey = () => new Date().toISOString().slice(0, 10);
-
 function App() {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState(emptyForm);
@@ -177,7 +175,7 @@ function App() {
         await Promise.all([
           fetch("/api/v1/users", { credentials: "include" }),
           fetch("/api/v1/leaves", { credentials: "include" }),
-          fetch(`/api/v1/attendance?date=${getTodayKey()}`, {
+          fetch("/api/v1/attendance", {
             credentials: "include",
           }),
         ]);
@@ -424,41 +422,41 @@ function App() {
   }, [profile?._id, profile?.role, route]);
 
   // Derive today's attendance breakdown for the admin attendance panel.
-  const todayKey = getTodayKey();
+  // NOTE: `todayAttendance` is already scoped to "today" server-side by
+  // GET /api/v1/attendance, so we deliberately do NOT re-filter it here by
+  // comparing ISO date-string prefixes — doing so previously broke around
+  // timezone boundaries (a record stored at local midnight can serialize to
+  // the *previous* day in UTC, making a client-side string slice like
+  // entry.date.slice(0, 10) === todayKey silently exclude every record).
+  const now = new Date();
 
   const onLeaveToday = leaveRequests.filter((entry) => {
-    if (entry.status !== "Approved") {
+    if (entry.status !== "Approved" || !entry.startDate || !entry.endDate) {
       return false;
     }
 
-    const start = entry.startDate ? entry.startDate.slice(0, 10) : null;
-    const end = entry.endDate ? entry.endDate.slice(0, 10) : null;
+    const start = new Date(entry.startDate);
+    const end = new Date(entry.endDate);
 
-    if (!start || !end) {
-      return false;
-    }
-
-    return todayKey >= start && todayKey <= end;
+    return start <= now && end >= now;
   });
 
   const onLeaveUserIds = new Set(
     onLeaveToday.map((entry) => entry.user?._id || entry.user).filter(Boolean),
   );
 
-  const todaysRecords = todayAttendance.filter(
-    (entry) => entry.date && entry.date.slice(0, 10) === todayKey,
-  );
-
-  const presentToday = todaysRecords.filter(
+  const presentToday = todayAttendance.filter(
     (entry) => entry.status?.toLowerCase() === "present",
   );
 
-  const absentToday = todaysRecords.filter(
+  const absentToday = todayAttendance.filter(
     (entry) => entry.status?.toLowerCase() === "absent",
   );
 
   const markedUserIds = new Set(
-    todaysRecords.map((entry) => entry.user?._id || entry.user).filter(Boolean),
+    todayAttendance
+      .map((entry) => entry.user?._id || entry.user)
+      .filter(Boolean),
   );
 
   const unmarkedToday = users.filter(
