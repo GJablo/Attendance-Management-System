@@ -8,7 +8,7 @@ A full-stack attendance and leave management system built with a Node.js/Express
 - Data models for `User`, `Employee`, `Student`, `Attendance`, and `Leave` are defined with Mongoose
 - Authentication, authorization, attendance tracking, leave requests, and reporting routes are available
 - Seed data script added for local testing
-- Frontend is implemented in `Client/` using React and Vite
+- Frontend is implemented in `Client/` using React and Vite, split into an API layer, custom hooks, and presentational components
 
 ## Technologies
 
@@ -36,6 +36,34 @@ ManagementSystem/
 ├── Client/                # frontend implementation (React + Vite)
 │   ├── public/
 │   ├── src/
+│   │   ├── api/
+│   │   │   ├── client.js
+│   │   │   ├── auth.js
+│   │   │   ├── users.js
+│   │   │   ├── attendance.js
+│   │   │   ├── leaves.js
+│   │   │   └── reports.js
+│   │   ├── hooks/
+│   │   │   ├── useRoute.js
+│   │   │   ├── useAuth.js
+│   │   │   ├── useAdminData.js
+│   │   │   ├── useUserDashboardData.js
+│   │   │   └── useAttendanceBreakdown.js
+│   │   ├── components/
+│   │   │   ├── TopBar.jsx
+│   │   │   ├── auth/
+│   │   │   │   └── AuthPanel.jsx
+│   │   │   ├── admin/
+│   │   │   │   ├── AdminDashboardPage.jsx
+│   │   │   │   ├── AdminSidebar.jsx
+│   │   │   │   ├── OverviewPanel.jsx
+│   │   │   │   ├── AttendancePanel.jsx
+│   │   │   │   ├── AttendanceColumn.jsx
+│   │   │   │   ├── UsersPanel.jsx
+│   │   │   │   ├── LeavesPanel.jsx
+│   │   │   │   └── ReportsPanel.jsx
+│   │   │   └── user/
+│   │   │       └── UserDashboardPage.jsx
 │   │   ├── assets/
 │   │   ├── App.jsx
 │   │   ├── App.css
@@ -73,9 +101,17 @@ ManagementSystem/
 
 - `Client/index.html` - HTML entry point
 - `Client/src/main.jsx` - React application entry point
-- `Client/src/App.jsx` - root application component
+- `Client/src/App.jsx` - root application component; wires the hooks below to the top-level layout and routes between the sign-in screen, the user dashboard, and the admin dashboard
 - `Client/src/App.css` / `Client/src/index.css` - application styles
 - `Client/src/assets/` - static assets (images, icons)
+- `Client/src/api/` - one module per backend resource (`auth`, `users`, `attendance`, `leaves`, `reports`); `client.js` holds the shared `fetch` wrapper (credentials, JSON headers, error normalization) that every other module builds on
+- `Client/src/hooks/` - state and side effects, decoupled from rendering:
+  - `useRoute` - lightweight pushState/popstate routing
+  - `useAuth` - login/register form state, the signed-in `user`/`profile`, and the shared status `message`
+  - `useAdminData` - admin dashboard summary, users, leave requests, today's attendance, and the related mutation actions
+  - `useUserDashboardData` - the signed-in user's own attendance/leave history and the mark-attendance / request-leave actions
+  - `useAttendanceBreakdown` - pure derivation of present / absent / on-leave / not-yet-marked lists from already-fetched data
+- `Client/src/components/` - presentational components, grouped by area (`auth/`, `admin/`, `user/`); `admin/AttendanceColumn.jsx` is a shared render-prop component used for the present, absent, and on-leave lists
 - `Client/vite.config.js` - Vite build configuration
 - `Client/eslint.config.js` - ESLint configuration
 
@@ -163,7 +199,7 @@ This will insert sample users, employees, students, attendance records, and leav
 ### Attendance
 
 - `POST /api/v1/attendance/mark`
-- `GET /api/v1/attendance/` - admin only
+- `GET /api/v1/attendance/` - admin only, scoped to today's date server-side
 - `GET /api/v1/attendance/:id` - admin only
 - `GET /api/v1/attendance/user/:id`
 - `PUT /api/v1/attendance/:id` - admin only
@@ -173,12 +209,14 @@ This will insert sample users, employees, students, attendance records, and leav
 
 - `POST /api/v1/leaves/`
 - `GET /api/v1/leaves/` - admin only
+- `GET /api/v1/leaves/me` - the signed-in user's own leave history
 - `PUT /api/v1/leaves/:id` - admin only
 - `DELETE /api/v1/leaves/:id` - admin only
 - `POST /api/v1/leaves/cancel/:id`
 
 ### Reports
 
+- `GET /api/v1/reports/admin-dashboard` - admin only; powers the admin overview panel (total employees, present/absent today, late arrivals, pending leave, department count, monthly attendance chart)
 - `GET /api/v1/reports/daily` - admin only
 - `GET /api/v1/reports/monthly` - admin only
 - `GET /api/v1/reports/student/:id`
@@ -194,7 +232,7 @@ This will insert sample users, employees, students, attendance records, and leav
 
 ## Notes
 
-- The `Client/` folder now contains a React (Vite) frontend implementation.
+- The `Client/` folder now contains a React (Vite) frontend implementation, organized into `api/` (HTTP calls), `hooks/` (state/side effects), and `components/` (presentation).
 - `reports/export/pdf` currently returns a `501 Not Implemented` response.
 - Passwords are hashed before being stored.
 - Error handling is centralized in `Server/middlewares/error.middleware.js`.
