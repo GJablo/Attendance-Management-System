@@ -1,4 +1,4 @@
-function LeavesPanel({ leaveRequests, onUpdateStatus }) {
+function LeavesPanel({ leaveRequests, onUpdateStatus, onDeleteLeave }) {
   return (
     <div className="dashboard-section">
       <h4>Manage leave requests</h4>
@@ -31,6 +31,21 @@ function LeavesPanel({ leaveRequests, onUpdateStatus }) {
                   onClick={() => onUpdateStatus(entry._id, "Rejected")}
                 >
                   ✕ Reject
+                </button>
+                <button
+                  type="button"
+                  className="action-btn action-btn-danger"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Delete this leave request permanently? This cannot be undone.",
+                      )
+                    ) {
+                      onDeleteLeave(entry._id);
+                    }
+                  }}
+                >
+                  🗑 Delete
                 </button>
               </div>
             </div>
