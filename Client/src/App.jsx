@@ -100,6 +100,8 @@ function App() {
               leaveSubmitting={userDashboard.leaveSubmitting}
               attendanceRecords={userDashboard.attendanceRecords}
               leaveHistory={userDashboard.leaveHistory}
+              onCancelLeave={userDashboard.cancelLeaveRequest}
+              cancellingLeaveId={userDashboard.cancellingLeaveId}
             />
           ) : (
             <AuthPanel

@@ -3,7 +3,7 @@ import {
   fetchUserAttendance,
   markAttendance as markAttendanceRequest,
 } from "../api/attendance";
-import { fetchMyLeaves, createLeave } from "../api/leaves";
+import { fetchMyLeaves, createLeave, cancelLeave } from "../api/leaves";
 
 const defaultLeaveForm = () => ({
   startDate: new Date().toISOString().slice(0, 10),
@@ -19,6 +19,9 @@ export const useUserDashboardData = ({ isActive, userId, setMessage }) => {
   const [leaveForm, setLeaveForm] = useState(defaultLeaveForm);
   const [attendanceSubmitting, setAttendanceSubmitting] = useState(false);
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+  // Tracks which leave request id is currently being cancelled, so we can
+  // disable just that row's button instead of the whole list.
+  const [cancellingLeaveId, setCancellingLeaveId] = useState(null);
 
   const loadData = async () => {
     if (!userId) {
@@ -77,6 +80,20 @@ export const useUserDashboardData = ({ isActive, userId, setMessage }) => {
     }
   };
 
+  const cancelLeaveRequest = async (leaveId) => {
+    setCancellingLeaveId(leaveId);
+
+    try {
+      await cancelLeave(leaveId);
+      setMessage("Leave request cancelled.");
+      await loadData();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setCancellingLeaveId(null);
+    }
+  };
+
   const reset = () => {
     setAttendanceRecords([]);
     setLeaveHistory([]);
@@ -98,6 +115,8 @@ export const useUserDashboardData = ({ isActive, userId, setMessage }) => {
     leaveSubmitting,
     markAttendance,
     submitLeaveRequest,
+    cancelLeaveRequest,
+    cancellingLeaveId,
     reset,
   };
 };

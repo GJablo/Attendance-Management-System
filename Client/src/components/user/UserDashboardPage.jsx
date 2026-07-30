@@ -20,6 +20,8 @@ function UserDashboardPage({
   leaveSubmitting,
   attendanceRecords,
   leaveHistory,
+  onCancelLeave,
+  cancellingLeaveId,
 }) {
   return (
     <section className="panel dashboard-page-panel user-dashboard-panel">
@@ -127,7 +129,9 @@ function UserDashboardPage({
                 attendanceRecords.map((entry) => (
                   <div key={entry._id} className="list-card">
                     <div>
-                      <strong>{new Date(entry.date).toLocaleDateString()}</strong>
+                      <strong>
+                        {new Date(entry.date).toLocaleDateString()}
+                      </strong>
                       <p className="muted">Status: {entry.status}</p>
                       <p className="muted">Remarks: {entry.remarks || "—"}</p>
                     </div>
@@ -143,18 +147,33 @@ function UserDashboardPage({
             <h3>Leave status</h3>
             <div className="stack-list">
               {leaveHistory.length ? (
-                leaveHistory.map((entry) => (
-                  <div key={entry._id} className="list-card">
-                    <div>
-                      <strong>{entry.reason}</strong>
-                      <p>
-                        {new Date(entry.startDate).toLocaleDateString()} -{" "}
-                        {new Date(entry.endDate).toLocaleDateString()}
-                      </p>
-                      <p className="muted">Status: {entry.status}</p>
+                leaveHistory.map((entry) => {
+                  const isPending = entry.status?.toLowerCase() === "pending";
+                  const isCancelling = cancellingLeaveId === entry._id;
+
+                  return (
+                    <div key={entry._id} className="list-card">
+                      <div>
+                        <strong>{entry.reason}</strong>
+                        <p>
+                          {new Date(entry.startDate).toLocaleDateString()} -{" "}
+                          {new Date(entry.endDate).toLocaleDateString()}
+                        </p>
+                        <p className="muted">Status: {entry.status}</p>
+                      </div>
+                      {isPending && (
+                        <button
+                          type="button"
+                          className="action-btn action-btn-danger"
+                          onClick={() => onCancelLeave(entry._id)}
+                          disabled={isCancelling}
+                        >
+                          {isCancelling ? "Cancelling…" : "Cancel request"}
+                        </button>
+                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p>No leave requests yet.</p>
               )}

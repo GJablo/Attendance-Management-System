@@ -15,3 +15,6 @@ export const updateLeaveStatus = (leaveId, status) =>
     method: "PUT",
     body: JSON.stringify({ status }),
   });
+
+export const cancelLeave = (leaveId) =>
+  request(`/api/v1/leaves/cancel/${leaveId}`, { method: "POST" });
