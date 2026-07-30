@@ -60,6 +60,7 @@ function App() {
       {isAdminRoute ? (
         <AdminDashboardPage
           isAdmin={isAdmin}
+          currentUserId={profile?._id}
           message={message}
           dashboard={admin.dashboard}
           dashboardLoading={admin.dashboardLoading}
@@ -70,6 +71,7 @@ function App() {
           activePanel={admin.activePanel}
           setActivePanel={admin.setActivePanel}
           onUpdateUserRole={admin.updateUserRole}
+          onDeleteUser={admin.deleteUser}
           onUpdateLeaveStatus={admin.updateLeaveStatus}
           onDownloadReports={admin.downloadReports}
           onBack={() => navigateTo("/")}

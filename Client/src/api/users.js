@@ -9,3 +9,6 @@ export const updateUserRole = (userId, role) =>
     method: "PUT",
     body: JSON.stringify({ role }),
   });
+
+export const deleteUser = (userId) =>
+  request(`/api/v1/users/${userId}`, { method: "DELETE" });
