@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { JWT_EXPIRES_IN, JWT_SECRET, NODE_ENV } from "../config/env.js";
 
-const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 1 day
 
 const cookieOptions = {
   httpOnly: true,
@@ -105,4 +105,8 @@ export const logOut = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+export const getMe = async (req, res) => {
+  res.status(200).json({ success: true, data: { user: req.user } });
 };
