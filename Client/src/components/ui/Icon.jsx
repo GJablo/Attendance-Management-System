@@ -96,6 +96,12 @@ const PATHS = {
       <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
     </>
   ),
+  building: (
+    <>
+      <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 21V9h2a2 2 0 0 1 2 2v10M2 21h20" />
+      <path d="M8 7h4M8 11h4M8 15h4" />
+    </>
+  ),
 };
 
 function Icon({ name, className = "size-5", ...rest }) {

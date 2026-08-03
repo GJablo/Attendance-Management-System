@@ -1,4 +1,26 @@
 import User from "../models/User.js";
+import Employee from "../models/Employee.js";
+import Student from "../models/Student.js";
+
+const EMPLOYEE_ROLES = ["employee", "teacher", "hr"];
+
+// Looks up the department from a user's linked Employee/Student profile.
+// Returns null for roles (user, admin) that have no such profile.
+const findDepartmentForUser = async (user) => {
+  if (EMPLOYEE_ROLES.includes(user.role)) {
+    const employee = await Employee.findOne({ user: user._id }).select(
+      "department",
+    );
+    return employee?.department ?? null;
+  }
+  if (user.role === "student") {
+    const student = await Student.findOne({ user: user._id }).select(
+      "department",
+    );
+    return student?.department ?? null;
+  }
+  return null;
+};
 
 export const getUsers = async (req, res, next) => {
   try {
@@ -19,7 +41,11 @@ export const getUser = async (req, res, next) => {
       throw error;
     }
 
-    res.status(200).json({ success: true, data: user });
+    const department = await findDepartmentForUser(user);
+
+    res
+      .status(200)
+      .json({ success: true, data: { ...user.toObject(), department } });
   } catch (error) {
     next(error);
   }
