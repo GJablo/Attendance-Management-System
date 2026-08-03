@@ -19,7 +19,7 @@ const formatDate = (value) =>
     year: "numeric",
   });
 
-function MarkAttendanceCard({ onMarkAttendance, submitting, todayRecord }) {
+function MarkAttendanceCard({ onMarkAttendance, submitting, todayRecord, onLeave }) {
   return (
     <SectionCard
       title="Mark attendance"
@@ -28,9 +28,23 @@ function MarkAttendanceCard({ onMarkAttendance, submitting, todayRecord }) {
         day: "numeric",
         month: "long",
       })}
-      action={todayRecord && <StatusBadge value={todayRecord.status} />}
+      action={
+        onLeave ? (
+          <StatusBadge value="on leave" tone="warning" />
+        ) : (
+          todayRecord && <StatusBadge value={todayRecord.status} />
+        )
+      }
     >
-      {todayRecord ? (
+      {onLeave ? (
+        <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 text-sm text-amber-800 dark:text-amber-200">
+          <Icon name="calendarCheck" className="mt-0.5 size-4 shrink-0" />
+          <p>
+            You&apos;re on approved leave today, so attendance is handled for
+            you — there&apos;s nothing to mark.
+          </p>
+        </div>
+      ) : todayRecord ? (
         <p className="mb-4 text-sm text-ink-muted">
           You&apos;re already marked{" "}
           <span className="font-semibold text-ink">{todayRecord.status}</span>{" "}
@@ -47,7 +61,7 @@ function MarkAttendanceCard({ onMarkAttendance, submitting, todayRecord }) {
           type="button"
           className="btn-primary"
           onClick={() => onMarkAttendance("present")}
-          disabled={submitting}
+          disabled={submitting || onLeave}
         >
           <Icon name="check" className="size-4" />
           {submitting ? "Working…" : "Mark present"}
@@ -56,7 +70,7 @@ function MarkAttendanceCard({ onMarkAttendance, submitting, todayRecord }) {
           type="button"
           className="btn-danger"
           onClick={() => onMarkAttendance("absent")}
-          disabled={submitting}
+          disabled={submitting || onLeave}
         >
           Mark absent
         </button>
@@ -240,6 +254,20 @@ function UserDashboardPage({
     (entry) => new Date(entry.date).toDateString() === todayKey,
   );
 
+  // On approved leave today when a request is approved and its date range
+  // covers now. Mirrors the server-side guard in markAttendance so the UI
+  // reflects the same rule the API enforces.
+  const now = new Date().getTime();
+  const onLeaveToday = leaveHistory.some((entry) => {
+    if (entry.status?.toLowerCase() !== "approved") {
+      return false;
+    }
+
+    const start = new Date(entry.startDate).setHours(0, 0, 0, 0);
+    const end = new Date(entry.endDate).setHours(23, 59, 59, 999);
+    return start <= now && now <= end;
+  });
+
   const stats = [
     {
       label: "Days present",
@@ -293,6 +321,7 @@ function UserDashboardPage({
               onMarkAttendance={onMarkAttendance}
               submitting={attendanceSubmitting}
               todayRecord={todayRecord}
+              onLeave={onLeaveToday}
             />
             <LeaveRequestForm
               leaveForm={leaveForm}
@@ -310,6 +339,7 @@ function UserDashboardPage({
             onMarkAttendance={onMarkAttendance}
             submitting={attendanceSubmitting}
             todayRecord={todayRecord}
+            onLeave={onLeaveToday}
           />
           <AttendanceHistory records={attendanceRecords} />
         </>
