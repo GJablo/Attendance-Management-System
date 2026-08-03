@@ -1,3 +1,7 @@
+import Icon from "../ui/Icon";
+import { EmptyState, SectionCard, StatusBadge } from "../ui/Feedback";
+import { Avatar } from "../shell/UserCard";
+
 const ROLE_OPTIONS = ["user", "employee", "admin", "teacher", "hr"];
 
 function UsersPanel({ users, currentUserId, onUpdateRole, onDeleteUser }) {
@@ -13,24 +17,44 @@ function UsersPanel({ users, currentUserId, onUpdateRole, onDeleteUser }) {
   };
 
   return (
-    <div className="dashboard-section">
-      <h4>Manage users</h4>
-      <div className="stack-list">
-        {users.length ? (
-          users.map((entry) => {
+    <SectionCard
+      title="Manage users"
+      subtitle={users.length ? `${users.length} accounts` : undefined}
+    >
+      {users.length ? (
+        <ul className="flex flex-col gap-2.5">
+          {users.map((entry) => {
             const isSelf = entry._id === currentUserId;
 
             return (
-              <div key={entry._id} className="list-card">
-                <div>
-                  <strong>
-                    {entry.firstname} {entry.lastname}
-                  </strong>
-                  <p>{entry.email}</p>
-                  <p className="muted">Role: {entry.role}</p>
+              <li
+                key={entry._id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-sunken px-4 py-3"
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <Avatar user={entry} />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {entry.firstname} {entry.lastname}
+                      </p>
+                      {isSelf && (
+                        <StatusBadge value="you" tone="brand" />
+                      )}
+                    </div>
+                    <p className="truncate text-sm text-ink-muted">
+                      {entry.email}
+                    </p>
+                  </div>
                 </div>
-                <div className="action-row">
+
+                <div className="flex items-center gap-2">
+                  <label className="sr-only" htmlFor={`role-${entry._id}`}>
+                    Role for {entry.firstname} {entry.lastname}
+                  </label>
                   <select
+                    id={`role-${entry._id}`}
+                    className="field-input w-auto py-1.5 text-[0.8125rem] capitalize"
                     value={entry.role}
                     onChange={(event) =>
                       onUpdateRole(entry._id, event.target.value)
@@ -42,26 +66,28 @@ function UsersPanel({ users, currentUserId, onUpdateRole, onDeleteUser }) {
                       </option>
                     ))}
                   </select>
+
                   <button
                     type="button"
-                    className="action-btn action-btn-danger"
+                    className="btn-danger btn-sm"
                     onClick={() => handleDelete(entry)}
                     disabled={isSelf}
+                    aria-label={`Delete ${entry.firstname} ${entry.lastname}`}
                     title={
-                      isSelf ? "You can't delete your own account" : undefined
+                      isSelf ? "You can't delete your own account" : "Delete user"
                     }
                   >
-                    Delete
+                    <Icon name="trash" className="size-4" />
                   </button>
                 </div>
-              </div>
+              </li>
             );
-          })
-        ) : (
-          <p>No users found.</p>
-        )}
-      </div>
-    </div>
+          })}
+        </ul>
+      ) : (
+        <EmptyState icon="users">No users found.</EmptyState>
+      )}
+    </SectionCard>
   );
 }
 
