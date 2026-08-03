@@ -1,36 +1,179 @@
+@import "tailwindcss";
+
+/* Drive `dark:` off the .dark class that useTheme toggles on <html>, instead
+   of Tailwind's default prefers-color-scheme, so the toggle actually wins. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens. Tailwind v4 reads @theme and generates utilities from it,
+   so `bg-surface` / `text-ink-muted` / `rounded-card` all come from here. */
+@theme {
+  --font-sans:
+    Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --color-brand-50: oklch(0.97 0.014 254);
+  --color-brand-100: oklch(0.93 0.032 255);
+  --color-brand-200: oklch(0.88 0.059 254);
+  --color-brand-300: oklch(0.81 0.094 254);
+  --color-brand-400: oklch(0.71 0.143 255);
+  --color-brand-500: oklch(0.62 0.188 260);
+  --color-brand-600: oklch(0.55 0.213 263);
+  --color-brand-700: oklch(0.49 0.2 264);
+  --color-brand-800: oklch(0.42 0.166 264);
+  --color-brand-900: oklch(0.38 0.135 266);
+
+  --radius-card: 1rem;
+  --radius-panel: 1.25rem;
+
+  --shadow-soft: 0 1px 2px 0 oklch(0.21 0.04 265 / 0.06);
+  --shadow-card:
+    0 1px 3px 0 oklch(0.21 0.04 265 / 0.08),
+    0 8px 24px -8px oklch(0.21 0.04 265 / 0.12);
+  --shadow-lift:
+    0 2px 6px 0 oklch(0.21 0.04 265 / 0.1),
+    0 16px 40px -12px oklch(0.21 0.04 265 / 0.18);
+}
+
+/* Semantic surface/ink tokens, remapped under .dark for dark mode. Components
+   only ever reference these, never raw slate/zinc values. */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-raised: var(--surface-raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+}
+
 :root {
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #111827;
-  background-color: #f8fafc;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --canvas: oklch(0.985 0.002 250);
+  --surface: oklch(1 0 0);
+  --surface-sunken: oklch(0.975 0.004 250);
+  --surface-raised: oklch(1 0 0);
+  --line: oklch(0.922 0.006 250);
+  --line-strong: oklch(0.87 0.01 250);
+  --ink: oklch(0.23 0.02 265);
+  --ink-muted: oklch(0.5 0.02 260);
+  --ink-subtle: oklch(0.63 0.017 258);
+
+  color-scheme: light;
 }
 
-* {
-  box-sizing: border-box;
+.dark {
+  --canvas: oklch(0.19 0.017 265);
+  --surface: oklch(0.245 0.019 265);
+  --surface-sunken: oklch(0.215 0.018 265);
+  --surface-raised: oklch(0.285 0.021 265);
+  --line: oklch(0.33 0.02 265);
+  --line-strong: oklch(0.42 0.024 265);
+  --ink: oklch(0.96 0.005 250);
+  --ink-muted: oklch(0.73 0.017 258);
+  --ink-subtle: oklch(0.62 0.019 260);
+
+  color-scheme: dark;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    min-width: 320px;
+    text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  /* Visible, consistent focus ring for keyboard users on every interactive
+     element, instead of relying on per-component rules. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+
+  /* Scoped to the app's scroll containers rather than all elements. */
+  .scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
 }
 
-#root {
-  min-height: 100vh;
+/* Declared with @utility (not @layer components) so the variants below can
+   @apply it — Tailwind v4 only resolves @apply against real utilities. */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5
+    text-sm font-semibold transition-all duration-150 select-none
+    active:scale-[0.98] disabled:pointer-events-none disabled:opacity-55;
 }
 
-button,
-input,
-select {
-  font: inherit;
+@layer components {
+  .card {
+    @apply bg-surface border border-line rounded-card shadow-card;
+  }
+
+  .section-card {
+    @apply bg-surface border border-line rounded-card p-5 shadow-soft;
+  }
+
+  .field-label {
+    @apply flex flex-col gap-1.5 text-sm font-medium text-ink;
+  }
+
+  .field-input {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm
+      text-ink shadow-soft transition-colors placeholder:text-ink-subtle
+      hover:border-line-strong focus:border-brand-500 focus:outline-none
+      focus:ring-2 focus:ring-brand-500/25 disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-soft hover:bg-brand-700
+      hover:shadow-card;
+  }
+
+  .btn-secondary {
+    @apply btn border border-line bg-surface text-ink shadow-soft
+      hover:border-line-strong hover:bg-surface-sunken;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-muted hover:bg-surface-sunken hover:text-ink;
+  }
+
+  .btn-success {
+    @apply btn bg-emerald-500/12 text-emerald-700 hover:bg-emerald-500/20
+      dark:text-emerald-300;
+  }
+
+  .btn-danger {
+    @apply btn bg-rose-500/12 text-rose-700 hover:bg-rose-500/20
+      dark:text-rose-300;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-[0.8125rem];
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs
+      font-semibold;
+  }
+
+  .eyebrow {
+    @apply text-[0.6875rem] font-bold uppercase tracking-[0.18em] text-brand-600
+      dark:text-brand-300;
+  }
 }
