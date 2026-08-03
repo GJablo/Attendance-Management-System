@@ -2,7 +2,12 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Employee from "../models/Employee.js";
+import Student from "../models/Student.js";
 import { JWT_EXPIRES_IN, JWT_SECRET, NODE_ENV } from "../config/env.js";
+
+// Roles that get a linked Employee profile (with a department) on registration.
+const EMPLOYEE_ROLES = ["employee", "teacher", "hr"];
 
 const COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 1 day
 
@@ -18,13 +23,39 @@ export const register = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const { firstname, lastname, email, password, role, phone } = req.body;
+    const {
+      firstname,
+      lastname,
+      email,
+      password,
+      role,
+      phone,
+      // Employee-only
+      department,
+      // Student-only
+      admissionNumber,
+      class: studentClass,
+      guardian,
+    } = req.body;
 
     // check if user exists
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
       throw new Error("User already exists");
     }
+
+    // Validate the role-specific fields up front so we fail before creating
+    // the User (the transaction would roll it back anyway, but this gives a
+    // clearer message than a downstream Mongoose validation error).
+    if (EMPLOYEE_ROLES.includes(role) && !department) {
+      throw new Error("Department is required for employees");
+    }
+    if (role === "student" && (!admissionNumber || !studentClass || !guardian)) {
+      throw new Error(
+        "Admission number, class, guardian, and department are required for students",
+      );
+    }
+
     // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedpassword = await bcrypt.hash(password, salt);
@@ -43,8 +74,40 @@ export const register = async (req, res, next) => {
       ],
       { session },
     );
+
+    const newUser = newUsers[0];
+
+    // Create the linked role profile in the same transaction so a failure
+    // here (e.g. duplicate admission number) rolls back the User too.
+    if (EMPLOYEE_ROLES.includes(role)) {
+      await Employee.create(
+        [
+          {
+            user: newUser._id,
+            department,
+            designation: role,
+            joiningDate: new Date(),
+          },
+        ],
+        { session },
+      );
+    } else if (role === "student") {
+      await Student.create(
+        [
+          {
+            user: newUser._id,
+            admissionNumber,
+            class: studentClass,
+            department,
+            guardian,
+          },
+        ],
+        { session },
+      );
+    }
+
     // Generate JWT token
-    const token = jwt.sign({ userId: newUsers[0]._id }, JWT_SECRET, {
+    const token = jwt.sign({ userId: newUser._id }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
 
@@ -57,7 +120,7 @@ export const register = async (req, res, next) => {
       .json({
         success: true,
         message: "User registered successfully",
-        data: { user: newUsers[0], token },
+        data: { user: newUser, token },
       });
   } catch (error) {
     await session.abortTransaction();

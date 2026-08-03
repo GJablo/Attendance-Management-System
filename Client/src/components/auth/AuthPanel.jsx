@@ -8,6 +8,27 @@ const ROLE_OPTIONS = [
   { value: "admin", label: "Admin" },
 ];
 
+// Roles that get an Employee profile (must pick a department) on registration.
+const EMPLOYEE_ROLES = ["employee"];
+
+const DEPARTMENT_OPTIONS = [
+  "Computer Science",
+  "Software Engineering",
+  "Information Technology",
+  "Cyber Security",
+  "Data Science",
+];
+
+const CLASS_OPTIONS = [
+  "Year 1",
+  "Year 2",
+  "Year 3",
+  "Year 4",
+  "Year 5",
+  "Masters",
+  "PhD",
+];
+
 const HIGHLIGHTS = [
   {
     icon: "calendarCheck",
@@ -203,6 +224,99 @@ function AuthPanel({
                     ))}
                   </select>
                 </label>
+
+                {/* Employees pick the department they belong to. */}
+                {EMPLOYEE_ROLES.includes(form.role) && (
+                  <label className="field-label">
+                    Department
+                    <select
+                      className="field-input"
+                      name="department"
+                      value={form.department}
+                      onChange={updateField}
+                      required
+                    >
+                      <option value="" disabled>
+                        Select a department
+                      </option>
+                      {DEPARTMENT_OPTIONS.map((department) => (
+                        <option key={department} value={department}>
+                          {department}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {/* Students supply their enrolment details. */}
+                {form.role === "student" && (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="field-label">
+                        Admission number
+                        <input
+                          className="field-input"
+                          name="admissionNumber"
+                          value={form.admissionNumber}
+                          onChange={updateField}
+                          placeholder="ADM-00123"
+                          required
+                        />
+                      </label>
+                      <label className="field-label">
+                        Class
+                        <select
+                          className="field-input"
+                          name="class"
+                          value={form.class}
+                          onChange={updateField}
+                          required
+                        >
+                          <option value="" disabled>
+                            Select a class
+                          </option>
+                          {CLASS_OPTIONS.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <label className="field-label">
+                      Department
+                      <select
+                        className="field-input"
+                        name="department"
+                        value={form.department}
+                        onChange={updateField}
+                        required
+                      >
+                        <option value="" disabled>
+                          Select a department
+                        </option>
+                        {DEPARTMENT_OPTIONS.map((department) => (
+                          <option key={department} value={department}>
+                            {department}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="field-label">
+                      Guardian name
+                      <input
+                        className="field-input"
+                        name="guardian"
+                        value={form.guardian}
+                        onChange={updateField}
+                        placeholder="Parent or guardian full name"
+                        required
+                      />
+                    </label>
+                  </>
+                )}
               </>
             )}
 

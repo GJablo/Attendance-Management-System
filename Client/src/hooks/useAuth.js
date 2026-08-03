@@ -9,6 +9,11 @@ const emptyForm = {
   password: "",
   phone: "",
   role: "user",
+  // Role-specific: only sent when the chosen role requires them.
+  department: "",
+  admissionNumber: "",
+  class: "",
+  guardian: "",
 };
 
 // Owns the login/register form, the signed-in user + profile, and the
@@ -43,7 +48,7 @@ export const useAuth = ({ navigateTo }) => {
           const profileData = await fetchUserProfile(currentUser._id);
           if (!cancelled) setProfile(profileData.data);
         }
-      } catch (error) {
+      } catch {
         // No valid session cookie (or it expired) - stay logged out.
         if (!cancelled) {
           setUser(null);
