@@ -4,12 +4,13 @@ import { Banner } from "../ui/Feedback";
 const ROLE_OPTIONS = [
   { value: "user", label: "User" },
   { value: "employee", label: "Employee" },
+  { value: "teacher", label: "Teacher" },
+  { value: "hr", label: "HR" },
   { value: "student", label: "Student" },
   { value: "admin", label: "Admin" },
 ];
 
-// Roles that get an Employee profile (must pick a department) on registration.
-const EMPLOYEE_ROLES = ["employee"];
+const EMPLOYEE_ROLES = ["employee", "teacher", "hr"];
 
 const DEPARTMENT_OPTIONS = [
   "Computer Science",
