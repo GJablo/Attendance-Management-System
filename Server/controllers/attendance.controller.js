@@ -118,6 +118,23 @@ export const markAttendance = async (req, res, next) => {
       });
     }
 
+    // Block self check-in while on approved leave covering today. A leave
+    // "covers" today when it started on/before end-of-day and ends on/after
+    // start-of-day, which handles single- and multi-day ranges alike.
+    const approvedLeaveToday = await Leave.findOne({
+      user: req.user._id,
+      status: "Approved",
+      startDate: { $lte: dayEnd },
+      endDate: { $gte: dayStart },
+    });
+
+    if (approvedLeaveToday) {
+      return res.status(409).json({
+        message: "You are on approved leave today and cannot mark attendance",
+        data: approvedLeaveToday,
+      });
+    }
+
     const attendance = await Attendance.create({
       ...req.body,
       user: req.user._id,
