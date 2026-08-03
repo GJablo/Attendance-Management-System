@@ -1,3 +1,6 @@
+import Icon from "../ui/Icon";
+import { Banner, EmptyState, SectionCard, StatusBadge } from "../ui/Feedback";
+
 const LEAVE_REASONS = [
   "Annual",
   "Sick",
@@ -9,9 +12,218 @@ const LEAVE_REASONS = [
   "Unpaid",
 ];
 
+const formatDate = (value) =>
+  new Date(value).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+function MarkAttendanceCard({ onMarkAttendance, submitting, todayRecord }) {
+  return (
+    <SectionCard
+      title="Mark attendance"
+      subtitle={new Date().toLocaleDateString(undefined, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      })}
+      action={todayRecord && <StatusBadge value={todayRecord.status} />}
+    >
+      {todayRecord ? (
+        <p className="mb-4 text-sm text-ink-muted">
+          You&apos;re already marked{" "}
+          <span className="font-semibold text-ink">{todayRecord.status}</span>{" "}
+          for today. Marking again updates the record.
+        </p>
+      ) : (
+        <p className="mb-4 text-sm text-ink-muted">
+          You haven&apos;t been marked yet today.
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => onMarkAttendance("present")}
+          disabled={submitting}
+        >
+          <Icon name="check" className="size-4" />
+          {submitting ? "Working…" : "Mark present"}
+        </button>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={() => onMarkAttendance("absent")}
+          disabled={submitting}
+        >
+          Mark absent
+        </button>
+      </div>
+    </SectionCard>
+  );
+}
+
+function LeaveRequestForm({ leaveForm, setLeaveForm, onSubmit, submitting }) {
+  const updateField = (field) => (event) =>
+    setLeaveForm((current) => ({ ...current, [field]: event.target.value }));
+
+  return (
+    <SectionCard
+      title="Request leave"
+      subtitle="Pick your dates and a reason, then submit for approval."
+    >
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="field-label">
+            Start date
+            <input
+              className="field-input"
+              type="date"
+              value={leaveForm.startDate}
+              onChange={updateField("startDate")}
+              required
+            />
+          </label>
+          <label className="field-label">
+            End date
+            <input
+              className="field-input"
+              type="date"
+              value={leaveForm.endDate}
+              min={leaveForm.startDate || undefined}
+              onChange={updateField("endDate")}
+              required
+            />
+          </label>
+        </div>
+
+        <label className="field-label">
+          Reason
+          <select
+            className="field-input"
+            value={leaveForm.reason}
+            onChange={updateField("reason")}
+          >
+            {LEAVE_REASONS.map((reason) => (
+              <option key={reason} value={reason}>
+                {reason}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button
+          type="submit"
+          className="btn-primary self-start"
+          disabled={submitting}
+        >
+          <Icon name="calendarPlus" className="size-4" />
+          {submitting ? "Submitting…" : "Submit leave request"}
+        </button>
+      </form>
+    </SectionCard>
+  );
+}
+
+function AttendanceHistory({ records }) {
+  return (
+    <SectionCard
+      title="Attendance history"
+      subtitle={records.length ? `${records.length} records` : undefined}
+    >
+      {records.length ? (
+        <ul className="flex flex-col gap-2">
+          {records.map((entry) => (
+            <li
+              key={entry._id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-sunken px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink">
+                  {formatDate(entry.date)}
+                </p>
+                {entry.remarks && (
+                  <p className="mt-0.5 truncate text-sm text-ink-muted">
+                    {entry.remarks}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {entry.checkIn && (
+                  <span className="hidden items-center gap-1.5 text-xs text-ink-subtle sm:inline-flex">
+                    <Icon name="clock" className="size-3.5" />
+                    {entry.checkIn}
+                  </span>
+                )}
+                <StatusBadge value={entry.status} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <EmptyState icon="calendarCheck">
+          No attendance records yet. Mark yourself present to get started.
+        </EmptyState>
+      )}
+    </SectionCard>
+  );
+}
+
+function LeaveHistory({ entries, onCancelLeave, cancellingLeaveId }) {
+  return (
+    <SectionCard
+      title="Leave status"
+      subtitle={entries.length ? `${entries.length} requests` : undefined}
+    >
+      {entries.length ? (
+        <ul className="flex flex-col gap-2">
+          {entries.map((entry) => {
+            const isPending = entry.status?.toLowerCase() === "pending";
+            const isCancelling = cancellingLeaveId === entry._id;
+
+            return (
+              <li
+                key={entry._id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-sunken px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-ink">
+                      {entry.reason}
+                    </p>
+                    <StatusBadge value={entry.status} />
+                  </div>
+                  <p className="mt-0.5 text-sm text-ink-muted">
+                    {formatDate(entry.startDate)} → {formatDate(entry.endDate)}
+                  </p>
+                </div>
+
+                {isPending && (
+                  <button
+                    type="button"
+                    className="btn-danger btn-sm"
+                    onClick={() => onCancelLeave(entry._id)}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? "Cancelling…" : "Cancel"}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <EmptyState icon="calendarPlus">No leave requests yet.</EmptyState>
+      )}
+    </SectionCard>
+  );
+}
+
 function UserDashboardPage({
+  section = "today",
   message,
-  onLogout,
   onMarkAttendance,
   attendanceSubmitting,
   leaveForm,
@@ -23,165 +235,102 @@ function UserDashboardPage({
   onCancelLeave,
   cancellingLeaveId,
 }) {
+  const todayKey = new Date().toDateString();
+  const todayRecord = attendanceRecords.find(
+    (entry) => new Date(entry.date).toDateString() === todayKey,
+  );
+
+  const stats = [
+    {
+      label: "Days present",
+      icon: "check",
+      value: attendanceRecords.filter(
+        (entry) => entry.status?.toLowerCase() === "present",
+      ).length,
+    },
+    {
+      label: "Days absent",
+      icon: "close",
+      value: attendanceRecords.filter(
+        (entry) => entry.status?.toLowerCase() === "absent",
+      ).length,
+    },
+    {
+      label: "Pending leave",
+      icon: "clock",
+      value: leaveHistory.filter(
+        (entry) => entry.status?.toLowerCase() === "pending",
+      ).length,
+    },
+  ];
+
   return (
-    <section className="panel dashboard-page-panel user-dashboard-panel">
-      <div className="dashboard-header">
-        <div>
-          <p className="eyebrow">Personal workspace</p>
-          <h2>My dashboard</h2>
-        </div>
-        <button type="button" className="secondary-btn" onClick={onLogout}>
-          Log out
-        </button>
-      </div>
+    <div className="flex flex-col gap-5">
+      {message && <Banner>{message}</Banner>}
 
-      {message && <p className="message">{message}</p>}
-
-      <div className="dashboard-layout user-dashboard-layout">
-        <div className="dashboard-content">
-          <div className="dashboard-section">
-            <h3>Mark attendance</h3>
-            <div className="action-row">
-              <button
-                type="button"
-                className="primary-btn"
-                onClick={() => onMarkAttendance("present")}
-                disabled={attendanceSubmitting}
-              >
-                {attendanceSubmitting ? "Working…" : "Mark present"}
-              </button>
-              <button
-                type="button"
-                className="action-btn action-btn-danger"
-                onClick={() => onMarkAttendance("absent")}
-                disabled={attendanceSubmitting}
-              >
-                Mark absent
-              </button>
-            </div>
+      {section === "today" && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {stats.map((stat) => (
+              <article key={stat.label} className="section-card">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-ink-muted">
+                    {stat.label}
+                  </p>
+                  <span className="grid size-8 place-items-center rounded-lg bg-brand-500/12 text-brand-600 dark:text-brand-300">
+                    <Icon name={stat.icon} className="size-4" />
+                  </span>
+                </div>
+                <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-ink">
+                  {stat.value}
+                </p>
+              </article>
+            ))}
           </div>
 
-          <div className="dashboard-section">
-            <h3>Request leave</h3>
-            <form onSubmit={onSubmitLeaveRequest} className="auth-form">
-              <label>
-                Start date
-                <input
-                  type="date"
-                  value={leaveForm.startDate}
-                  onChange={(event) =>
-                    setLeaveForm((current) => ({
-                      ...current,
-                      startDate: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </label>
-              <label>
-                End date
-                <input
-                  type="date"
-                  value={leaveForm.endDate}
-                  onChange={(event) =>
-                    setLeaveForm((current) => ({
-                      ...current,
-                      endDate: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </label>
-              <label>
-                Reason
-                <select
-                  value={leaveForm.reason}
-                  onChange={(event) =>
-                    setLeaveForm((current) => ({
-                      ...current,
-                      reason: event.target.value,
-                    }))
-                  }
-                >
-                  {LEAVE_REASONS.map((reason) => (
-                    <option key={reason} value={reason}>
-                      {reason}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="submit"
-                className="primary-btn"
-                disabled={leaveSubmitting}
-              >
-                {leaveSubmitting ? "Submitting…" : "Submit leave request"}
-              </button>
-            </form>
+          <div className="grid gap-5 xl:grid-cols-2">
+            <MarkAttendanceCard
+              onMarkAttendance={onMarkAttendance}
+              submitting={attendanceSubmitting}
+              todayRecord={todayRecord}
+            />
+            <LeaveRequestForm
+              leaveForm={leaveForm}
+              setLeaveForm={setLeaveForm}
+              onSubmit={onSubmitLeaveRequest}
+              submitting={leaveSubmitting}
+            />
           </div>
-        </div>
+        </>
+      )}
 
-        <div className="dashboard-content">
-          <div className="dashboard-section">
-            <h3>Attendance history</h3>
-            <div className="stack-list">
-              {attendanceRecords.length ? (
-                attendanceRecords.map((entry) => (
-                  <div key={entry._id} className="list-card">
-                    <div>
-                      <strong>
-                        {new Date(entry.date).toLocaleDateString()}
-                      </strong>
-                      <p className="muted">Status: {entry.status}</p>
-                      <p className="muted">Remarks: {entry.remarks || "—"}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p>No attendance records yet.</p>
-              )}
-            </div>
-          </div>
+      {section === "attendance" && (
+        <>
+          <MarkAttendanceCard
+            onMarkAttendance={onMarkAttendance}
+            submitting={attendanceSubmitting}
+            todayRecord={todayRecord}
+          />
+          <AttendanceHistory records={attendanceRecords} />
+        </>
+      )}
 
-          <div className="dashboard-section">
-            <h3>Leave status</h3>
-            <div className="stack-list">
-              {leaveHistory.length ? (
-                leaveHistory.map((entry) => {
-                  const isPending = entry.status?.toLowerCase() === "pending";
-                  const isCancelling = cancellingLeaveId === entry._id;
-
-                  return (
-                    <div key={entry._id} className="list-card">
-                      <div>
-                        <strong>{entry.reason}</strong>
-                        <p>
-                          {new Date(entry.startDate).toLocaleDateString()} -{" "}
-                          {new Date(entry.endDate).toLocaleDateString()}
-                        </p>
-                        <p className="muted">Status: {entry.status}</p>
-                      </div>
-                      {isPending && (
-                        <button
-                          type="button"
-                          className="action-btn action-btn-danger"
-                          onClick={() => onCancelLeave(entry._id)}
-                          disabled={isCancelling}
-                        >
-                          {isCancelling ? "Cancelling…" : "Cancel request"}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <p>No leave requests yet.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+      {section === "leaves" && (
+        <>
+          <LeaveRequestForm
+            leaveForm={leaveForm}
+            setLeaveForm={setLeaveForm}
+            onSubmit={onSubmitLeaveRequest}
+            submitting={leaveSubmitting}
+          />
+          <LeaveHistory
+            entries={leaveHistory}
+            onCancelLeave={onCancelLeave}
+            cancellingLeaveId={cancellingLeaveId}
+          />
+        </>
+      )}
+    </div>
   );
 }
 
