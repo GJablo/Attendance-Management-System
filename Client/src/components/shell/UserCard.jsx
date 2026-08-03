@@ -34,6 +34,13 @@ function UserCard({ user, profile, onLogout }) {
         </div>
       </div>
 
+      {profile?.department && (
+        <p className="mt-2.5 flex items-center gap-1.5 text-xs text-ink-subtle">
+          <Icon name="building" className="size-3.5 shrink-0" />
+          <span className="truncate">{profile.department}</span>
+        </p>
+      )}
+
       <div className="mt-3 flex items-center justify-between gap-2">
         {profile?.role && <StatusBadge value={profile.role} />}
         <button
