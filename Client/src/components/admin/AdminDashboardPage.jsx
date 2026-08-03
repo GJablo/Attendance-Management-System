@@ -1,12 +1,13 @@
-import AdminSidebar from "./AdminSidebar";
 import OverviewPanel from "./OverviewPanel";
 import AttendancePanel from "./AttendancePanel";
 import UsersPanel from "./UsersPanel";
 import LeavesPanel from "./LeavesPanel";
 import ReportsPanel from "./ReportsPanel";
+import { Banner, Spinner } from "../ui/Feedback";
 
+// Navigation now lives in the app shell's sidebar; this component just renders
+// whichever panel is active.
 function AdminDashboardPage({
-  isAdmin,
   currentUserId,
   message,
   dashboard,
@@ -16,92 +17,56 @@ function AdminDashboardPage({
   leaveRequests,
   todayAttendance,
   activePanel,
-  setActivePanel,
   onUpdateUserRole,
   onDeleteUser,
   onUpdateLeaveStatus,
   onDeleteLeave,
   onDownloadReports,
-  onBack,
-  onLogout,
 }) {
   return (
-    <main className="dashboard-page">
-      <section className="panel dashboard-page-panel">
-        <div className="dashboard-header">
-          <div>
-            <p className="eyebrow">Admin overview</p>
-            <h2>Executive dashboard</h2>
-          </div>
-          <div className="dashboard-actions">
-            <button type="button" className="secondary-btn" onClick={onBack}>
-              Back
-            </button>
-            <button type="button" className="secondary-btn" onClick={onLogout}>
-              Log out
-            </button>
-          </div>
+    <div className="flex flex-col gap-5">
+      {message && <Banner>{message}</Banner>}
+      {dashboardError && <Banner tone="negative">{dashboardError}</Banner>}
+
+      {dashboardLoading && !dashboard && (
+        <div className="section-card">
+          <Spinner label="Loading dashboard…" />
         </div>
+      )}
 
-        {!isAdmin && (
-          <div className="message">
-            Only admins can access this page. Return to the sign-in screen.
-          </div>
-        )}
+      {activePanel === "overview" && dashboard && (
+        <OverviewPanel dashboard={dashboard} />
+      )}
 
-        {isAdmin && dashboardLoading && (
-          <p className="message">Loading dashboard…</p>
-        )}
-        {isAdmin && dashboardError && (
-          <p className="message">{dashboardError}</p>
-        )}
-        {message && isAdmin && <p className="message">{message}</p>}
+      {activePanel === "attendance" && (
+        <AttendancePanel
+          todayAttendance={todayAttendance}
+          leaveRequests={leaveRequests}
+          users={users}
+        />
+      )}
 
-        {isAdmin && dashboard && (
-          <div className="dashboard-layout">
-            <AdminSidebar
-              activePanel={activePanel}
-              setActivePanel={setActivePanel}
-            />
+      {activePanel === "users" && (
+        <UsersPanel
+          users={users}
+          currentUserId={currentUserId}
+          onUpdateRole={onUpdateUserRole}
+          onDeleteUser={onDeleteUser}
+        />
+      )}
 
-            <div className="dashboard-content">
-              {activePanel === "overview" && (
-                <OverviewPanel dashboard={dashboard} />
-              )}
+      {activePanel === "leaves" && (
+        <LeavesPanel
+          leaveRequests={leaveRequests}
+          onUpdateStatus={onUpdateLeaveStatus}
+          onDeleteLeave={onDeleteLeave}
+        />
+      )}
 
-              {activePanel === "attendance" && (
-                <AttendancePanel
-                  todayAttendance={todayAttendance}
-                  leaveRequests={leaveRequests}
-                  users={users}
-                />
-              )}
-
-              {activePanel === "users" && (
-                <UsersPanel
-                  users={users}
-                  currentUserId={currentUserId}
-                  onUpdateRole={onUpdateUserRole}
-                  onDeleteUser={onDeleteUser}
-                />
-              )}
-
-              {activePanel === "leaves" && (
-                <LeavesPanel
-                  leaveRequests={leaveRequests}
-                  onUpdateStatus={onUpdateLeaveStatus}
-                  onDeleteLeave={onDeleteLeave}
-                />
-              )}
-
-              {activePanel === "reports" && (
-                <ReportsPanel onDownload={onDownloadReports} />
-              )}
-            </div>
-          </div>
-        )}
-      </section>
-    </main>
+      {activePanel === "reports" && (
+        <ReportsPanel onDownload={onDownloadReports} />
+      )}
+    </div>
   );
 }
 
