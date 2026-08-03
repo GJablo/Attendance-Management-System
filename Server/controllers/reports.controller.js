@@ -2,6 +2,7 @@ import Attendance from "../models/Attendance.js";
 import Employee from "../models/Employee.js";
 import Leave from "../models/Leave.js";
 import User from "../models/User.js";
+import { reconcileAbsentDays } from "./attendance.controller.js";
 
 const startOfDay = (date) => {
   const d = new Date(date);
@@ -40,6 +41,10 @@ const getDayKey = (value) => {
 
 export const getAdminDashboardSummary = async (req, res, next) => {
   try {
+    // Ensure completed days without a check-in are recorded as "absent" before
+    // computing any counts, so the metrics and monthly chart are accurate.
+    await reconcileAbsentDays(new Date());
+
     const today = new Date();
     const start = startOfDay(today);
     const end = endOfDay(today);
