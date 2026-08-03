@@ -9,6 +9,8 @@ import leaveRouter from "./routes/leave.routes.js";
 import connectDB from "./database/mongodb.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
+import startAbsentReconcileJob from "./jobs/attendanceJobs.js";
+import { reconcileAbsentDays } from "./controllers/attendance.controller.js";
 import cookieParser from "cookie-parser";
 
 const app = express();
@@ -56,4 +58,17 @@ app.listen(PORT, async () => {
     `Attendance Management System API running on http://localhost:${PORT}`,
   );
   await connectDB();
+
+  // Catch up on any absences missed while the server was down, then hand off
+  // to the daily cron for ongoing reconciliation.
+  try {
+    const created = await reconcileAbsentDays(new Date());
+    if (created > 0) {
+      console.log(`Startup reconcile: auto-marked ${created} absent record(s).`);
+    }
+  } catch (error) {
+    console.error("Startup absent reconcile failed:", error);
+  }
+
+  startAbsentReconcileJob();
 });

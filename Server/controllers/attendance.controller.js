@@ -19,84 +19,123 @@ const endOfDay = (date) => {
 // Adjust this list if "student" should also be tracked.
 const TRACKED_STAFF_ROLES = ["employee", "teacher", "hr"];
 
-const ensureDailyAttendanceFallback = async (date = new Date()) => {
-  const dayStart = startOfDay(date);
-  const dayEnd = endOfDay(date);
+// How many days back the reconciler will look when filling in missing
+// "absent" records. Bounds the work per run and avoids rewriting ancient
+// history if the server was offline for a long time.
+const RECONCILE_WINDOW_DAYS = 31;
 
-  const [staffUsers, attendanceRecords, approvedLeaves] = await Promise.all([
-    User.find({
-      role: { $in: TRACKED_STAFF_ROLES },
-    }).select("_id"),
-    Attendance.find({ date: { $gte: dayStart, $lte: dayEnd } }).populate(
-      "user",
-      "firstname lastname email role",
-    ),
+const addDays = (date, amount) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
+};
+
+const dayKey = (value) => startOfDay(value).getTime();
+
+// Auto-marks tracked staff "absent" for every COMPLETED day (up to and
+// including yesterday) on which they neither logged attendance nor were on
+// approved leave. Today is intentionally excluded — people can still check in
+// until the day is over. Returns the number of records created.
+//
+// Safe to call repeatedly / concurrently: it skips days that already have a
+// record, and the (user, date) unique index rejects any duplicate that slips
+// through a race, which we swallow.
+export const reconcileAbsentDays = async (referenceDate = new Date()) => {
+  // Window: [windowStart 00:00, yesterday 23:59:59.999]. Nothing to do before
+  // the first tracked day.
+  const yesterdayEnd = endOfDay(addDays(startOfDay(referenceDate), -1));
+  const windowStart = startOfDay(
+    addDays(startOfDay(referenceDate), -RECONCILE_WINDOW_DAYS),
+  );
+
+  if (windowStart > yesterdayEnd) {
+    return 0;
+  }
+
+  const [staffUsers, records, approvedLeaves] = await Promise.all([
+    User.find({ role: { $in: TRACKED_STAFF_ROLES } }).select("_id createdAt"),
+    Attendance.find({
+      date: { $gte: windowStart, $lte: yesterdayEnd },
+    }).select("user date"),
     Leave.find({
       status: "Approved",
-      startDate: { $lte: dayEnd },
-      endDate: { $gte: dayStart },
-    }).select("user"),
+      startDate: { $lte: yesterdayEnd },
+      endDate: { $gte: windowStart },
+    }).select("user startDate endDate"),
   ]);
 
-  // Only auto-mark people absent once the day is actually over. While the
-  // day is still in progress, people should still have the chance to check
-  // in themselves — return whatever real records exist so far without
-  // manufacturing "absent" placeholders.
-  const dayHasEnded = new Date() > dayEnd;
-
-  if (!dayHasEnded) {
-    return attendanceRecords;
+  if (staffUsers.length === 0) {
+    return 0;
   }
 
-  const markedUserIds = new Set(
-    attendanceRecords
-      .map((record) => record.user?._id?.toString())
-      .filter(Boolean),
-  );
-  const leaveUserIds = new Set(
-    approvedLeaves.map((entry) => entry.user.toString()),
-  );
-
-  const missingUsers = staffUsers.filter(
-    (user) =>
-      !markedUserIds.has(user._id.toString()) &&
-      !leaveUserIds.has(user._id.toString()),
-  );
-
-  if (missingUsers.length === 0) {
-    return attendanceRecords;
+  // Fast lookup of "user X already has a record on day D".
+  const markedByUser = new Map();
+  for (const record of records) {
+    const userId = record.user.toString();
+    if (!markedByUser.has(userId)) {
+      markedByUser.set(userId, new Set());
+    }
+    markedByUser.get(userId).add(dayKey(record.date));
   }
 
-  const existingMissingRecords = await Attendance.find({
-    user: { $in: missingUsers.map((user) => user._id) },
-    date: { $gte: dayStart, $lte: dayEnd },
-  }).select("user");
+  const toCreate = [];
 
-  const existingMissingUserIds = new Set(
-    existingMissingRecords.map((record) => record.user.toString()),
-  );
+  for (const user of staffUsers) {
+    const userId = user._id.toString();
+    const marked = markedByUser.get(userId) || new Set();
 
-  const recordsToCreate = missingUsers.filter(
-    (user) => !existingMissingUserIds.has(user._id.toString()),
-  );
+    // Approved-leave day spans for this specific user, so we can skip them.
+    const userLeaveSpans = approvedLeaves
+      .filter((leave) => leave.user.toString() === userId)
+      .map((leave) => ({
+        start: startOfDay(leave.startDate).getTime(),
+        end: endOfDay(leave.endDate).getTime(),
+      }));
 
-  if (recordsToCreate.length > 0) {
-    await Attendance.insertMany(
-      recordsToCreate.map((user) => ({
+    // Don't manufacture absences before the account existed.
+    const joinedAt = user.createdAt ? startOfDay(user.createdAt) : windowStart;
+    let cursor = joinedAt > windowStart ? joinedAt : windowStart;
+
+    for (; cursor <= yesterdayEnd; cursor = addDays(cursor, 1)) {
+      const key = dayKey(cursor);
+
+      if (marked.has(key)) {
+        continue;
+      }
+
+      const onLeave = userLeaveSpans.some(
+        (span) => key >= span.start && key <= span.end,
+      );
+      if (onLeave) {
+        continue;
+      }
+
+      toCreate.push({
         user: user._id,
         markedBy: user._id,
-        date: dayStart,
+        date: startOfDay(cursor),
         status: "absent",
         remarks: "Auto-marked absent",
-      })),
-    );
+      });
+    }
   }
 
-  const updatedRecords = await Attendance.find({
-    date: { $gte: dayStart, $lte: dayEnd },
-  }).populate("user", "firstname lastname email role");
+  if (toCreate.length === 0) {
+    return 0;
+  }
 
-  return updatedRecords;
+  try {
+    // ordered:false so one duplicate (lost race) doesn't abort the batch.
+    const inserted = await Attendance.insertMany(toCreate, { ordered: false });
+    return inserted.length;
+  } catch (error) {
+    // 11000 = duplicate key from the (user,date) index — expected under
+    // concurrent reconciles; the row already exists, so it's not a failure.
+    if (error?.code === 11000 || error?.writeErrors) {
+      return error.result?.insertedCount ?? 0;
+    }
+    throw error;
+  }
 };
 
 export const markAttendance = async (req, res, next) => {
@@ -142,8 +181,6 @@ export const markAttendance = async (req, res, next) => {
       date: dayStart,
     });
 
-    await ensureDailyAttendanceFallback(now);
-
     res
       .status(201)
       .json({ message: "Attendance marked successfully", data: attendance });
@@ -154,7 +191,15 @@ export const markAttendance = async (req, res, next) => {
 
 export const getAttendances = async (req, res, next) => {
   try {
-    const attendances = await ensureDailyAttendanceFallback(new Date());
+    // Backfill any missing "absent" records for completed days before
+    // returning today's snapshot, so the admin view is always up to date.
+    await reconcileAbsentDays(new Date());
+
+    const now = new Date();
+    const attendances = await Attendance.find({
+      date: { $gte: startOfDay(now), $lte: endOfDay(now) },
+    }).populate("user", "firstname lastname email role");
+
     res.status(200).json({ success: true, data: attendances });
   } catch (error) {
     next(error);

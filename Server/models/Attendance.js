@@ -40,6 +40,11 @@ const attendanceSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// One attendance record per user per day. `date` is always normalized to the
+// start of the day on write, so this reliably prevents duplicate rows —
+// including auto-marked "absent" entries created by concurrent reconciles.
+attendanceSchema.index({ user: 1, date: 1 }, { unique: true });
+
 const Attendance = mongoose.model("Attendance", attendanceSchema);
 
 export default Attendance;
