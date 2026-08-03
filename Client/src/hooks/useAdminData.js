@@ -18,6 +18,9 @@ import { fetchTodayAttendance } from "../api/attendance";
 export const useAdminData = ({ isActive, setMessage }) => {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  // Separate from dashboardLoading so paging between months only spins the
+  // chart, instead of tearing down the whole overview.
+  const [monthLoading, setMonthLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
   const [users, setUsers] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
@@ -36,6 +39,40 @@ export const useAdminData = ({ isActive, setMessage }) => {
       setDashboardError(error.message);
     } finally {
       setDashboardLoading(false);
+    }
+  };
+
+  // Pages the monthly attendance chart by `delta` months relative to whatever
+  // month is currently shown. Refuses to go past the current month, since the
+  // server clamps future windows and they'd only ever be empty. Only the chart
+  // spins (monthLoading); the today-metrics stay put.
+  const changeMonth = async (delta) => {
+    const current = dashboard?.month;
+    if (!current) {
+      return;
+    }
+
+    const target = new Date(current.year, current.month - 1 + delta, 1);
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    if (target > currentMonthStart) {
+      return;
+    }
+
+    setMonthLoading(true);
+    setDashboardError("");
+
+    try {
+      const data = await fetchAdminDashboard({
+        year: target.getFullYear(),
+        month: target.getMonth() + 1,
+      });
+      setDashboard(data.data);
+    } catch (error) {
+      setDashboardError(error.message);
+    } finally {
+      setMonthLoading(false);
     }
   };
 
@@ -136,7 +173,9 @@ export const useAdminData = ({ isActive, setMessage }) => {
   return {
     dashboard,
     dashboardLoading,
+    monthLoading,
     dashboardError,
+    changeMonth,
     users,
     leaveRequests,
     todayAttendance,

@@ -12,7 +12,9 @@ function AdminDashboardPage({
   message,
   dashboard,
   dashboardLoading,
+  monthLoading,
   dashboardError,
+  onChangeMonth,
   users,
   leaveRequests,
   todayAttendance,
@@ -35,7 +37,11 @@ function AdminDashboardPage({
       )}
 
       {activePanel === "overview" && dashboard && (
-        <OverviewPanel dashboard={dashboard} />
+        <OverviewPanel
+          dashboard={dashboard}
+          onChangeMonth={onChangeMonth}
+          monthLoading={monthLoading}
+        />
       )}
 
       {activePanel === "attendance" && (

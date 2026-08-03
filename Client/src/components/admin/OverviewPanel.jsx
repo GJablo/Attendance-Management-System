@@ -32,7 +32,42 @@ function MetricCard({ label, value, icon }) {
   );
 }
 
-function OverviewPanel({ dashboard }) {
+function MonthToggle({ month, onChangeMonth, loading }) {
+  // The server clamps to the current month, so forward paging is disabled once
+  // we're already viewing it.
+  const atCurrentMonth = month?.isCurrent ?? true;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        className="btn-ghost btn-sm"
+        onClick={() => onChangeMonth(-1)}
+        disabled={loading}
+        aria-label="Previous month"
+      >
+        <Icon name="chevronLeft" className="size-4" />
+      </button>
+
+      <span className="min-w-[9rem] text-center text-sm font-semibold text-ink">
+        {loading ? "Loading…" : month?.label || "This month"}
+      </span>
+
+      <button
+        type="button"
+        className="btn-ghost btn-sm"
+        onClick={() => onChangeMonth(1)}
+        disabled={loading || atCurrentMonth}
+        aria-label="Next month"
+        title={atCurrentMonth ? "Already at the current month" : undefined}
+      >
+        <Icon name="chevronRight" className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+function OverviewPanel({ dashboard, onChangeMonth, monthLoading = false }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -46,9 +81,22 @@ function OverviewPanel({ dashboard }) {
         ))}
       </div>
 
-      <SectionCard title="Monthly attendance">
+      <SectionCard
+        title="Monthly attendance"
+        action={
+          <MonthToggle
+            month={dashboard.month}
+            onChangeMonth={onChangeMonth}
+            loading={monthLoading}
+          />
+        }
+      >
         {dashboard.monthlyAttendance?.length ? (
-          <ul className="flex flex-col gap-3">
+          <ul
+            className={`flex flex-col gap-3 transition-opacity ${
+              monthLoading ? "opacity-50" : ""
+            }`}
+          >
             {dashboard.monthlyAttendance.map((entry) => {
               const total =
                 (entry.present || 0) + (entry.absent || 0) + (entry.leave || 0);
@@ -91,7 +139,7 @@ function OverviewPanel({ dashboard }) {
           </ul>
         ) : (
           <p className="text-sm text-ink-muted">
-            No attendance records for this month yet.
+            No attendance records for {dashboard.month?.label || "this month"}.
           </p>
         )}
 
