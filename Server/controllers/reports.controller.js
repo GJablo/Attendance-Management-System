@@ -43,7 +43,20 @@ export const getAdminDashboardSummary = async (req, res, next) => {
     const today = new Date();
     const start = startOfDay(today);
     const end = endOfDay(today);
-    const monthStart = new Date(
+
+    // Today's headline metrics always reflect the real current day. Only the
+    // monthly attendance chart honours the optional year/month query params so
+    // the admin can page back through history. Params are clamped to never
+    // resolve past the current month (no empty future windows).
+    const requestedYear = req.query.year
+      ? Number(req.query.year)
+      : today.getFullYear();
+    const requestedMonth = req.query.month
+      ? Number(req.query.month) - 1
+      : today.getMonth();
+
+    let monthStart = new Date(requestedYear, requestedMonth, 1, 0, 0, 0, 0);
+    const currentMonthStart = new Date(
       today.getFullYear(),
       today.getMonth(),
       1,
@@ -52,15 +65,17 @@ export const getAdminDashboardSummary = async (req, res, next) => {
       0,
       0,
     );
-    const monthEnd = new Date(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999,
-    );
+
+    if (
+      Number.isNaN(monthStart.getTime()) ||
+      monthStart > currentMonthStart
+    ) {
+      monthStart = currentMonthStart;
+    }
+
+    const chartYear = monthStart.getFullYear();
+    const chartMonth = monthStart.getMonth();
+    const monthEnd = new Date(chartYear, chartMonth + 1, 0, 23, 59, 59, 999);
 
     const [
       staffUsers,
@@ -91,7 +106,7 @@ export const getAdminDashboardSummary = async (req, res, next) => {
     const monthlyAttendance = Array.from(
       { length: monthEnd.getDate() },
       (_, index) => {
-        const date = new Date(today.getFullYear(), today.getMonth(), index + 1);
+        const date = new Date(chartYear, chartMonth, index + 1);
         const dayKey = getDayKey(date);
         const dayRecords = monthlyAttendances.filter(
           (record) => getDayKey(record.date) === dayKey,
@@ -123,6 +138,19 @@ export const getAdminDashboardSummary = async (req, res, next) => {
         pendingLeaveRequests: pendingLeaves.length,
         totalDepartments: departments.length,
         monthlyAttendance,
+        // Which month the chart above actually covers, so the client can label
+        // it and decide whether paging forward is allowed.
+        month: {
+          year: chartYear,
+          month: chartMonth + 1,
+          label: monthStart.toLocaleDateString("en", {
+            month: "long",
+            year: "numeric",
+          }),
+          isCurrent:
+            chartYear === today.getFullYear() &&
+            chartMonth === today.getMonth(),
+        },
       },
     });
   } catch (error) {

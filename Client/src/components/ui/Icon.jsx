@@ -70,6 +70,8 @@ const PATHS = {
     </>
   ),
   check: <path d="M20 6L9 17l-5-5" />,
+  chevronLeft: <path d="M15 18l-6-6 6-6" />,
+  chevronRight: <path d="M9 18l6-6-6-6" />,
   trash: (
     <>
       <path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />

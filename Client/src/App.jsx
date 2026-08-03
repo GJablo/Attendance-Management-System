@@ -150,7 +150,9 @@ function App() {
           message={message}
           dashboard={admin.dashboard}
           dashboardLoading={admin.dashboardLoading}
+          monthLoading={admin.monthLoading}
           dashboardError={admin.dashboardError}
+          onChangeMonth={admin.changeMonth}
           users={admin.users}
           leaveRequests={admin.leaveRequests}
           todayAttendance={admin.todayAttendance}
